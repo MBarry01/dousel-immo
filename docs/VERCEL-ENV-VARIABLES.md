@@ -37,9 +37,11 @@ Après le déploiement initial, vous devez configurer les variables d'environnem
 
 #### Variable 3 : `NEXT_PUBLIC_APP_URL`
 - **Key** : `NEXT_PUBLIC_APP_URL`
-- **Value** : L'URL de votre application Vercel (ex: `https://dousel-immo.vercel.app`)
+- **Value** : L'URL de votre application Vercel (ex: `https://dousell-immo.vercel.app`)
 - **Environment** : Sélectionnez **Production**, **Preview**, et **Development**
 - Cliquez sur **Save**
+
+> **Note** : Pour le développement local, utilisez `.env.local` avec `NEXT_PUBLIC_APP_URL=http://localhost:3000`
 
 ### 3. Redéployer le Projet
 
