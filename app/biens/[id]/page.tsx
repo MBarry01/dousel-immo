@@ -16,6 +16,8 @@ import { createClient } from "@/utils/supabase/server";
 
 // Revalidation toutes les heures (3600 secondes) pour mettre à jour les données périodiquement
 export const revalidate = 3600;
+// Force dynamic to avoid build-time errors if env vars are missing
+export const dynamic = 'force-dynamic';
 
 type PropertyPageProps = {
   params: Promise<{

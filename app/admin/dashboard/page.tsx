@@ -14,6 +14,9 @@ const statusColors: Record<string, string> = {
   vendu: "bg-red-500/20 text-red-300",
 };
 
+// Force dynamic rendering to avoid build-time errors
+export const dynamic = 'force-dynamic';
+
 export default async function AdminDashboardPage() {
   // Ensure user is authorized admin
   await requireAdmin();

@@ -6,6 +6,8 @@ import { getHomePageSections } from "@/services/homeService";
 // Cache la page d'accueil pendant 1 heure (3600 secondes)
 // Cela améliore les performances et réduit la charge sur Supabase
 export const revalidate = 3600;
+// Force dynamic to avoid build-time errors if env vars are missing
+export const dynamic = 'force-dynamic';
 
 export default async function Home() {
   // Récupération optimisée des 3 sections de la home page
