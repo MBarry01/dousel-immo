@@ -57,20 +57,6 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     }
 
     // Sinon, on utilise motion.button avec animations
-    // Exclure les props qui entrent en conflit avec Framer Motion
-    const {
-      onDrag,
-      onDragStart,
-      onDragEnd,
-      ...motionProps
-    } = props;
-
-    // Typage des props pour motion.button en excluant les conflits
-    type MotionButtonProps = Omit<
-      React.ComponentPropsWithoutRef<typeof motion.button>,
-      "onDrag" | "onDragStart" | "onDragEnd" | "ref"
-    >;
-
     return (
       <motion.button
         className={cn(buttonVariants({ variant, size }), className)}
@@ -82,7 +68,7 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
           stiffness: 400,
           damping: 30,
         }}
-        {...(motionProps as MotionButtonProps)}
+        {...(props as React.ComponentPropsWithoutRef<typeof motion.button>)}
       />
     );
   }
