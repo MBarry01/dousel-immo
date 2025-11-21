@@ -51,7 +51,7 @@ export const PropertyInfo = ({ property, similar }: PropertyInfoProps) => {
     <motion.section
       initial={{ y: 100, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
-      transition={{ duration: 0.4, ease: "easeOut" }}
+      transition={{ duration: 0.4, ease: "easeOut" as const }}
       className="relative z-10 -mt-6 rounded-t-[32px] bg-white px-6 pb-28 pt-8 text-gray-900 shadow-2xl dark:bg-[#080b11] dark:text-white"
     >
       <div className="mb-6 flex flex-col gap-3">
