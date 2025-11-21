@@ -6,9 +6,20 @@ export async function updateSession(request: NextRequest) {
     request,
   });
 
+  // Use placeholder values during build/runtime if env vars are missing
+  // This allows the app to work even if credentials are not yet configured
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://placeholder.supabase.co";
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "placeholder-key";
+
+  // If credentials are missing, skip auth checks and allow all requests
+  // This prevents middleware from crashing during initial deployment
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+    return supabaseResponse;
+  }
+
   const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    supabaseUrl,
+    supabaseAnonKey,
     {
       cookies: {
         getAll() {
@@ -33,9 +44,17 @@ export async function updateSession(request: NextRequest) {
   // supabase.auth.getUser(). A simple mistake could make it very hard to debug
   // issues with users being randomly logged out.
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  let user = null;
+  try {
+    const {
+      data: { user: authUser },
+    } = await supabase.auth.getUser();
+    user = authUser;
+  } catch (error) {
+    // If Supabase is not available or credentials are invalid, continue without auth
+    // This allows the app to work even if Supabase is not configured yet
+    console.warn("Middleware: Error getting user (this is OK if Supabase is not configured):", error);
+  }
 
   if (
     !user &&

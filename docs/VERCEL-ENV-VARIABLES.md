@@ -1,118 +1,86 @@
-# 🔑 Configuration des Variables d'Environnement sur Vercel
+# 🔧 Configuration des Variables d'Environnement dans Vercel
 
 ## ⚠️ Important
 
-Pour que votre application fonctionne correctement sur Vercel, vous devez configurer les variables d'environnement dans le dashboard Vercel.
+Après le déploiement initial, vous devez configurer les variables d'environnement dans Vercel pour que l'application fonctionne correctement.
 
-## 📋 Variables Requises
+## 📋 Étapes de Configuration
 
-Les variables suivantes sont **obligatoires** :
+### 1. Trouver vos Credentials Supabase
 
-### 1. `NEXT_PUBLIC_SUPABASE_URL`
-
-L'URL de votre projet Supabase.
-
-**Format :** `https://votre-projet.supabase.co`
-
-**Exemple :** `https://blyanhulvwpdfpezlaji.supabase.co`
-
-### 2. `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-
-La clé publique "anon" de votre projet Supabase (pas la clé "service_role").
-
-**Où la trouver :**
-1. Allez sur [supabase.com/dashboard](https://supabase.com/dashboard)
-2. Sélectionnez votre projet
+1. Connectez-vous à [supabase.com](https://supabase.com)
+2. Ouvrez votre projet
 3. Allez dans **Settings** → **API**
-4. Copiez la clé **"anon"** (publique), pas **"service_role"** (secrète)
+4. Copiez :
+   - **Project URL** → Ce sera votre `NEXT_PUBLIC_SUPABASE_URL`
+   - **anon public** key → Ce sera votre `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 
-### 3. `NEXT_PUBLIC_APP_URL` (Optionnel mais recommandé)
+### 2. Ajouter les Variables dans Vercel
 
-L'URL de votre application déployée sur Vercel.
-
-**Exemple :** `https://votre-app.vercel.app`
-
-## 🔧 Comment Configurer sur Vercel
-
-### Méthode 1 : Via le Dashboard Vercel (Recommandé)
-
-1. Allez sur [vercel.com/dashboard](https://vercel.com/dashboard)
-2. Sélectionnez votre projet `dousel-immo`
+1. Allez sur [vercel.com](https://vercel.com)
+2. Ouvrez votre projet **Doussel Immo**
 3. Allez dans **Settings** → **Environment Variables**
 4. Cliquez sur **Add New**
-5. Ajoutez chaque variable une par une :
-   - **Name** : `NEXT_PUBLIC_SUPABASE_URL`
-   - **Value** : Votre URL Supabase
-   - **Environments** : Sélectionnez **Production**, **Preview**, et **Development**
-   - Cliquez sur **Save**
-6. Répétez pour `NEXT_PUBLIC_SUPABASE_ANON_KEY` et `NEXT_PUBLIC_APP_URL`
+5. Ajoutez ces 3 variables :
 
-### Méthode 2 : Via la CLI Vercel
+#### Variable 1 : `NEXT_PUBLIC_SUPABASE_URL`
+- **Key** : `NEXT_PUBLIC_SUPABASE_URL`
+- **Value** : Votre URL Supabase (ex: `https://votre-projet.supabase.co`)
+- **Environment** : Sélectionnez **Production**, **Preview**, et **Development**
+- Cliquez sur **Save**
 
-```bash
-# Installer Vercel CLI (si pas déjà installé)
-npm i -g vercel
+#### Variable 2 : `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- **Key** : `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- **Value** : Votre clé anonyme Supabase
+- **Environment** : Sélectionnez **Production**, **Preview**, et **Development**
+- Cliquez sur **Save**
 
-# Se connecter
-vercel login
+#### Variable 3 : `NEXT_PUBLIC_APP_URL`
+- **Key** : `NEXT_PUBLIC_APP_URL`
+- **Value** : L'URL de votre application Vercel (ex: `https://dousel-immo.vercel.app`)
+- **Environment** : Sélectionnez **Production**, **Preview**, et **Development**
+- Cliquez sur **Save**
 
-# Ajouter les variables d'environnement
-vercel env add NEXT_PUBLIC_SUPABASE_URL
-vercel env add NEXT_PUBLIC_SUPABASE_ANON_KEY
-vercel env add NEXT_PUBLIC_APP_URL
-```
+### 3. Redéployer le Projet
 
-## 🔄 Redéployer Après Configuration
-
-**Important :** Après avoir ajouté ou modifié des variables d'environnement, vous devez redéployer votre application :
-
-1. Via le Dashboard :
-   - Allez dans **Deployments**
-   - Trouvez le dernier déploiement
-   - Cliquez sur les **3 points** (⋯) → **Redeploy**
-
-2. Via Git :
-   - Faites un commit et push sur votre branche
-   - Vercel redéploiera automatiquement
+1. Après avoir ajouté toutes les variables, allez dans **Deployments**
+2. Trouvez le dernier déploiement
+3. Cliquez sur les **3 points** → **Redeploy**
+4. Ou simplement faites un nouveau push sur GitHub (Vercel redéploiera automatiquement)
 
 ## ✅ Vérification
 
-Pour vérifier que les variables sont correctement configurées :
+Une fois redéployé avec les variables d'environnement :
 
-1. Allez sur votre site déployé
-2. Ouvrez la console du navigateur (F12)
-3. Tapez : `console.log(process.env.NEXT_PUBLIC_SUPABASE_URL)`
-4. Vous devriez voir votre URL Supabase
+1. Visitez votre site Vercel
+2. L'application devrait fonctionner correctement
+3. Les fonctionnalités d'authentification devraient être actives
+4. Plus d'erreur 500 dans le middleware
 
-## 🐛 Problèmes Courants
+## 📝 Notes Importantes
 
-### "Supabase credentials are missing"
+- ⚠️ **Ne commitez JAMAIS** vos variables d'environnement dans Git
+- ✅ Les variables `NEXT_PUBLIC_*` sont visibles côté client (c'est normal pour Supabase)
+- ✅ Utilisez toujours la clé **anon public** (jamais la clé service_role)
+- ✅ Ajoutez les variables pour **tous les environnements** (Production, Preview, Development)
 
-**Cause :** Les variables d'environnement ne sont pas configurées sur Vercel.
+## 🔍 Vérifier que les Variables sont Bien Configurées
 
-**Solution :** Configurez les variables comme indiqué ci-dessus et redéployez.
+Après le redéploiement, vous pouvez vérifier dans les logs Vercel que les variables sont bien chargées :
 
-### "Invalid API key"
+1. Allez dans **Deployments** → Cliquez sur le dernier déploiement
+2. Ouvrez les **Build Logs**
+3. Vous ne devriez **plus voir** :
+   ```
+   ⚠️ Supabase credentials are missing
+   ```
 
-**Cause :** Vous avez utilisé la clé "service_role" au lieu de "anon".
+## 🚀 Résultat Attendu
 
-**Solution :** Utilisez la clé "anon" (publique) depuis Supabase Dashboard → Settings → API.
+Une fois les variables configurées et le projet redéployé :
 
-### Les variables ne sont pas disponibles
-
-**Cause :** Vous avez ajouté les variables mais n'avez pas redéployé.
-
-**Solution :** Redéployez l'application après avoir ajouté les variables.
-
-## 📝 Exemple de Configuration Complète
-
-Dans Vercel Dashboard → Settings → Environment Variables :
-
-| Name | Value | Environments |
-|------|-------|--------------|
-| `NEXT_PUBLIC_SUPABASE_URL` | `https://blyanhulvwpdfpezlaji.supabase.co` | Production, Preview, Development |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | `eyJhbGc...` (votre clé anon) | Production, Preview, Development |
-| `NEXT_PUBLIC_APP_URL` | `https://votre-app.vercel.app` | Production, Preview |
-
-⚠️ **Remplacez les valeurs par vos propres identifiants !**
-
+- ✅ Plus d'erreur 500
+- ✅ Le middleware fonctionne correctement
+- ✅ L'authentification fonctionne
+- ✅ Les données Supabase sont accessibles
+- ✅ Toutes les fonctionnalités sont actives
