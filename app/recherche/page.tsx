@@ -9,13 +9,11 @@ type SearchPageProps = {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 };
 
-// Force dynamic to avoid build-time errors if env vars are missing
-export const dynamic = 'force-dynamic';
-
 export const metadata = {
   title: "Recherche · Doussel Immo",
 };
 
+// Force dynamic to avoid build-time errors if env vars are missing
 // Page dynamique car les filtres changent constamment
 export const dynamic = "force-dynamic";
 
