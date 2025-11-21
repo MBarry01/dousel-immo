@@ -29,8 +29,34 @@ To learn more about Next.js, take a look at the following resources:
 
 You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
 
-## Deploy on Vercel
+## 🚀 Déploiement
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+### Option 1 : Vercel (Recommandé) ⭐
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Le moyen le plus simple de déployer votre application Next.js est d'utiliser [Vercel](https://vercel.com/new) :
+
+1. Connectez votre compte GitHub
+2. Importez le dépôt `dousel-immo`
+3. Ajoutez les variables d'environnement :
+   - `NEXT_PUBLIC_SUPABASE_URL`
+   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+   - `NEXT_PUBLIC_APP_URL`
+4. Déployez ! 🚀
+
+👉 [Déployer sur Vercel](https://vercel.com/new)
+
+### Option 2 : GitHub Pages
+
+⚠️ **Limitation** : GitHub Pages ne supporte que les sites statiques. Les fonctionnalités serveur (authentification, API routes) ne fonctionneront pas.
+
+Pour plus de détails, consultez [docs/GITHUB-PAGES-SETUP.md](docs/GITHUB-PAGES-SETUP.md).
+
+### Variables d'environnement
+
+Créez un fichier `.env.local` à la racine du projet :
+
+```env
+NEXT_PUBLIC_SUPABASE_URL=https://votre-projet.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=votre-anon-key
+NEXT_PUBLIC_APP_URL=http://localhost:3000
+```

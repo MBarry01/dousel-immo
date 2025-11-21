@@ -1,7 +1,18 @@
 import type { NextConfig } from "next";
 
+const isGitHubPages = process.env.GITHUB_ACTIONS === 'true';
+const repositoryName = 'dousel-immo';
+
 const nextConfig: NextConfig = {
+  // Configuration pour GitHub Pages (seulement si déployé via GitHub Actions)
+  ...(isGitHubPages && {
+    output: 'export',
+    basePath: `/${repositoryName}`,
+    assetPrefix: `/${repositoryName}/`,
+    trailingSlash: true,
+  }),
   images: {
+    ...(isGitHubPages && { unoptimized: true }),
     remotePatterns: [
       {
         protocol: "https",
