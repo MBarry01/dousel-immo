@@ -35,15 +35,16 @@ const buttonVariants = cva(
   }
 );
 
-export type ButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> &
+export type ButtonProps = Omit<
+  React.ButtonHTMLAttributes<HTMLButtonElement>,
+  "onDrag" | "onDragStart" | "onDragEnd"
+> &
   VariantProps<typeof buttonVariants> & {
     asChild?: boolean;
   };
 
 export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
   ({ className, variant, size, asChild = false, disabled, ...props }, ref) => {
-    const Comp = asChild ? Slot : motion.button;
-
     // Si asChild, on utilise Slot (pas d'animation)
     if (asChild) {
       return (
@@ -56,18 +57,32 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     }
 
     // Sinon, on utilise motion.button avec animations
+    // Exclure les props qui entrent en conflit avec Framer Motion
+    const {
+      onDrag,
+      onDragStart,
+      onDragEnd,
+      ...motionProps
+    } = props;
+
+    // Typage des props pour motion.button en excluant les conflits
+    type MotionButtonProps = Omit<
+      React.ComponentPropsWithoutRef<typeof motion.button>,
+      "onDrag" | "onDragStart" | "onDragEnd" | "ref"
+    >;
+
     return (
-      <Comp
+      <motion.button
         className={cn(buttonVariants({ variant, size }), className)}
         ref={ref}
         disabled={disabled}
-        whileTap={disabled ? {} : { scale: 0.96 }}
+        whileTap={disabled ? undefined : { scale: 0.96 }}
         transition={{
           type: "spring",
           stiffness: 400,
           damping: 30,
         }}
-        {...props}
+        {...(motionProps as MotionButtonProps)}
       />
     );
   }
