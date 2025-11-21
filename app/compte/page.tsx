@@ -35,7 +35,7 @@ import { FadeIn } from "@/components/ui/motion-wrapper";
 export default function ComptePage() {
   const { user, loading } = useAuth();
   const router = useRouter();
-  const { favorites, clearFavorites } = useFavoritesStore();
+  const { favorites } = useFavoritesStore();
 
   // Check if user is admin
   const isAdmin = user?.email?.toLowerCase() === "barrymohamadou98@gmail.com".toLowerCase();
