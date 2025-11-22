@@ -50,7 +50,7 @@ export const SearchExperience = ({
 
   return (
     <div className="relative space-y-6 pb-32">
-      <div className="sticky top-24 z-30 rounded-[28px] border border-white/5 bg-black/40 p-4 backdrop-blur-xl">
+      <div className="md:sticky md:top-24 z-30 rounded-[28px] border border-white/5 bg-black/40 p-4 backdrop-blur-xl">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
           <div className="flex flex-1 items-center gap-3 rounded-2xl border border-white/10 bg-white/5 px-4 py-2">
             <SearchIcon className="h-5 w-5 text-white/50" />
