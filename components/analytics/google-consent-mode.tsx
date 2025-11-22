@@ -16,10 +16,15 @@ export function GoogleConsentMode() {
     if (typeof window === "undefined") return;
 
     // Initialiser dataLayer si inexistant (doit être fait en premier)
-    window.dataLayer = window.dataLayer || [];
+    if (!window.dataLayer || !Array.isArray(window.dataLayer)) {
+      window.dataLayer = [];
+    }
 
     // Fonction gtag si inexistante
     function gtag(...args: unknown[]) {
+      if (!window.dataLayer || !Array.isArray(window.dataLayer)) {
+        window.dataLayer = [];
+      }
       window.dataLayer.push(args);
     }
 
