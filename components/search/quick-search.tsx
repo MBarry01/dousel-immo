@@ -14,6 +14,29 @@ export const QuickSearch = () => {
   const router = useRouter();
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [filters, setFilters] = useState<PropertyFilters>({});
+  const [location, setLocation] = useState("");
+  const [maxPrice, setMaxPrice] = useState("");
+  const [minSurface, setMinSurface] = useState("");
+
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    
+    // Construire les paramètres URL
+    const params = new URLSearchParams();
+    
+    if (location.trim()) {
+      params.set("q", location.trim());
+    }
+    if (maxPrice.trim()) {
+      params.set("maxPrice", maxPrice.trim());
+    }
+    if (minSurface.trim()) {
+      params.set("minSurface", minSurface.trim());
+    }
+    
+    // Rediriger vers la page de recherche avec les filtres
+    router.push(`/recherche?${params.toString()}`);
+  };
 
   const handleApplyFilters = (appliedFilters: PropertyFilters) => {
     setFilters(appliedFilters);
@@ -72,11 +95,28 @@ export const QuickSearch = () => {
             <SlidersHorizontal className="mr-2 h-4 w-4" /> Filtres avancés
           </Button>
         </div>
-      <form className="mt-6 grid gap-3 sm:grid-cols-4">
-        <Input placeholder="Ville, quartier" />
-        <Input placeholder="Budget max" />
-        <Input placeholder="Surface min" />
-        <Button className="rounded-2xl bg-white text-black hover:bg-white/90">
+      <form onSubmit={handleSubmit} className="mt-6 grid gap-3 sm:grid-cols-4">
+        <Input 
+          placeholder="Ville, quartier" 
+          value={location}
+          onChange={(e) => setLocation(e.target.value)}
+        />
+        <Input 
+          placeholder="Budget max (FCFA)" 
+          type="number"
+          value={maxPrice}
+          onChange={(e) => setMaxPrice(e.target.value)}
+        />
+        <Input 
+          placeholder="Surface min (m²)" 
+          type="number"
+          value={minSurface}
+          onChange={(e) => setMinSurface(e.target.value)}
+        />
+        <Button 
+          type="submit"
+          className="rounded-2xl bg-white text-black hover:bg-white/90"
+        >
           Rechercher
         </Button>
       </form>
