@@ -8,6 +8,7 @@ import { z } from "zod";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowLeft, ArrowRight, Check, Home, Building2, Mountain, Store, X } from "lucide-react";
+import { InfoTooltip } from "@/components/ui/info-tooltip";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -794,9 +795,12 @@ export default function DeposerPage() {
                 >
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
-                      <h3 className="text-lg font-semibold text-white">
-                        Mandat Agence
-                      </h3>
+                      <div className="flex items-center gap-2">
+                        <h3 className="text-lg font-semibold text-white">
+                          Mandat Agence
+                        </h3>
+                        <InfoTooltip content="L'option sérénité. Doussel Immo s'occupe de tout : photos professionnelles, visites, rédaction du bail/vente. Vous ne payez rien maintenant. Une commission sera prélevée uniquement si nous trouvons un preneur." />
+                      </div>
                       <p className="mt-2 text-sm text-white/70">
                         On s&apos;occupe de tout. Commission au succès.
                       </p>
@@ -823,9 +827,12 @@ export default function DeposerPage() {
                 >
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
-                      <h3 className="text-lg font-semibold text-white">
-                        Diffusion Simple
-                      </h3>
+                      <div className="flex items-center gap-2">
+                        <h3 className="text-lg font-semibold text-white">
+                          Diffusion Simple
+                        </h3>
+                        <InfoTooltip content="L'option autonomie. Vous payez pour afficher votre annonce sur notre site pendant 30 jours. Vous gérez vous-même les appels et les visites. Idéal si vous voulez garder le contrôle total." />
+                      </div>
                       <p className="mt-2 text-sm text-white/70">
                         Vous gérez vos visites. Votre annonce visible 30 jours.
                       </p>

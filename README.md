@@ -56,7 +56,13 @@ Pour plus de détails, consultez [docs/GITHUB-PAGES-SETUP.md](docs/GITHUB-PAGES-
 Créez un fichier `.env.local` à la racine du projet :
 
 ```env
+# Supabase
 NEXT_PUBLIC_SUPABASE_URL=https://votre-projet.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=votre-anon-key
 NEXT_PUBLIC_APP_URL=http://localhost:3000
+
+# Google Analytics (optionnel)
+NEXT_PUBLIC_GOOGLE_ANALYTICS_ID=G-HCQXTE7LS1
 ```
+
+**Note** : Pour plus de détails sur la configuration Google Analytics avec consentement cookies, voir [docs/GOOGLE-ANALYTICS-SETUP.md](docs/GOOGLE-ANALYTICS-SETUP.md).

@@ -11,6 +11,41 @@ const nextConfig: NextConfig = {
     assetPrefix: `/${repositoryName}/`,
     trailingSlash: true,
   }),
+  // Headers de sécurité OWASP
+  async headers() {
+    return [
+      {
+        // Appliquer à toutes les routes
+        source: '/:path*',
+        headers: [
+          {
+            key: 'X-DNS-Prefetch-Control',
+            value: 'on',
+          },
+          {
+            key: 'Strict-Transport-Security',
+            value: 'max-age=63072000; includeSubDomains; preload',
+          },
+          {
+            key: 'X-Frame-Options',
+            value: 'SAMEORIGIN',
+          },
+          {
+            key: 'X-Content-Type-Options',
+            value: 'nosniff',
+          },
+          {
+            key: 'Referrer-Policy',
+            value: 'origin-when-cross-origin',
+          },
+          {
+            key: 'Permissions-Policy',
+            value: 'camera=(), microphone=(), geolocation=(), interest-cohort=()',
+          },
+        ],
+      },
+    ];
+  },
   images: {
     ...(isGitHubPages && { unoptimized: true }),
     qualities: [50, 55, 60, 65, 70, 75, 80, 85, 90, 95, 100],

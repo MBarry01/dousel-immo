@@ -1,12 +1,13 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import { GoogleAnalytics } from "@next/third-parties/google";
 
 import { AppShell } from "@/components/layout/app-shell";
 import { Toaster } from "@/components/ui/sonner";
 import { ServiceWorkerRegister } from "@/components/pwa/service-worker-register";
 import { InstallPrompt } from "@/components/pwa/install-prompt";
 import { SuppressHydrationWarning } from "@/components/providers/suppress-hydration-warning";
+import { CookieConsent } from "@/components/ui/cookie-consent";
+import { ConditionalGoogleAnalytics } from "@/components/analytics/conditional-google-analytics";
 
 import "./globals.css";
 import "react-medium-image-zoom/dist/styles.css";
@@ -29,7 +30,7 @@ export const metadata: Metadata = {
     template: "%s · Dousell Immo",
   },
   description:
-    "Dousell Immo est une expérience immobilière mobile-first inspirée des apps natives iOS & Android.",
+    "L'immobilier de confiance à Dakar et au Sénégal. Expérience mobile-first inspirée des apps natives iOS & Android.",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
@@ -37,8 +38,15 @@ export const metadata: Metadata = {
     title: "Dousell Immo",
   },
   icons: {
-    icon: "/icons/icon.svg",
-    apple: "/icons/icon.svg",
+    icon: [
+      { url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icons/icon-512.png", sizes: "512x512", type: "image/png" },
+      { url: "/icons/icon.svg", type: "image/svg+xml" },
+    ],
+    apple: [
+      { url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icons/icon-512.png", sizes: "512x512", type: "image/png" },
+    ],
   },
   other: {
     "mobile-web-app-capable": "yes",
@@ -74,7 +82,8 @@ export default function RootLayout({
         <AppShell>{children}</AppShell>
         <InstallPrompt />
         <Toaster position="top-center" theme="dark" richColors />
-        {gaId && <GoogleAnalytics gaId={gaId} />}
+        <CookieConsent />
+        {gaId && <ConditionalGoogleAnalytics gaId={gaId} />}
       </body>
     </html>
   );
