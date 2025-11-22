@@ -320,7 +320,7 @@ export async function createAdminNotification(
     type,
     title,
     message,
-    link: link || null,
+    resource_path: link || null,
   });
 
   if (error) {

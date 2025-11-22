@@ -85,16 +85,28 @@ export function useNotifications(userId: string | null) {
         throw fetchError;
       }
 
-      const unread = data?.filter((n) => !n.is_read).length || 0;
+      // Typage explicite des notifications pour garantir la cohérence
+      const typedNotifications: Notification[] = (data || []).map((n) => ({
+        id: n.id,
+        user_id: n.user_id,
+        type: n.type as NotificationType,
+        title: n.title,
+        message: n.message,
+        resource_path: n.resource_path,
+        is_read: n.is_read,
+        created_at: n.created_at,
+      }));
+
+      const unread = typedNotifications.filter((n) => !n.is_read).length;
       
       console.log("📬 Notifications récupérées:", {
         userId,
-        total: data?.length || 0,
+        total: typedNotifications.length,
         unread,
-        notifications: data?.map(n => ({ id: n.id, title: n.title, is_read: n.is_read }))
+        notifications: typedNotifications.map(n => ({ id: n.id, title: n.title, is_read: n.is_read }))
       });
       
-      setNotifications(data || []);
+      setNotifications(typedNotifications);
       setUnreadCount(unread);
       setError(null);
     } catch (err) {
@@ -155,8 +167,19 @@ export function useNotifications(userId: string | null) {
             },
             (payload) => {
               console.log("🔔 Nouvelle notification reçue via Realtime:", payload.new);
+              // Typage explicite de la nouvelle notification
+              const newNotification: Notification = {
+                id: payload.new.id,
+                user_id: payload.new.user_id,
+                type: payload.new.type as NotificationType,
+                title: payload.new.title,
+                message: payload.new.message,
+                resource_path: payload.new.resource_path,
+                is_read: payload.new.is_read,
+                created_at: payload.new.created_at,
+              };
               // Ajouter la nouvelle notification en haut de la liste
-              setNotifications((prev) => [payload.new as Notification, ...prev]);
+              setNotifications((prev) => [newNotification, ...prev]);
               setUnreadCount((prev) => prev + 1);
               // Marquer que Realtime fonctionne
               lastRealtimeCheck.current = Date.now();
@@ -171,10 +194,21 @@ export function useNotifications(userId: string | null) {
               filter: `user_id=eq.${userId}`,
             },
             (payload) => {
+              // Typage explicite de la notification mise à jour
+              const updatedNotification: Notification = {
+                id: payload.new.id,
+                user_id: payload.new.user_id,
+                type: payload.new.type as NotificationType,
+                title: payload.new.title,
+                message: payload.new.message,
+                resource_path: payload.new.resource_path,
+                is_read: payload.new.is_read,
+                created_at: payload.new.created_at,
+              };
               // Mettre à jour la notification modifiée et recalculer le nombre de non lues en une seule opération
               setNotifications((prev) => {
                 const updated = prev.map((n) =>
-                  n.id === payload.new.id ? (payload.new as Notification) : n
+                  n.id === updatedNotification.id ? updatedNotification : n
                 );
                 // Recalculer le nombre de non lues
                 const unread = updated.filter((n) => !n.is_read).length;

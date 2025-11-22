@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { useNotifications, type Notification } from "@/hooks/use-notifications";
+import { useNotifications, type Notification, type NotificationType } from "@/hooks/use-notifications";
 import { markNotificationAsRead, markAllNotificationsAsRead } from "@/app/notifications/actions";
 import { toast } from "sonner";
 
@@ -21,14 +21,14 @@ type NotificationBellProps = {
   userId: string | null;
 };
 
-const notificationIcons = {
+const notificationIcons: Record<NotificationType, typeof Info> = {
   info: Info,
   success: CheckCircle,
   warning: AlertTriangle,
   error: XCircle,
 };
 
-const notificationColors = {
+const notificationColors: Record<NotificationType, string> = {
   info: "text-blue-500",
   success: "text-green-500",
   warning: "text-yellow-500",
