@@ -228,7 +228,7 @@ export async function requireAnyRole(roles: UserRole[] = ["admin", "moderateur",
     return user;
   } catch (error) {
     // Si c'est une redirection Next.js, la laisser passer
-    if (error && typeof error === "object" && "digest" in error && error.digest?.includes("NEXT_REDIRECT")) {
+    if (error && typeof error === "object" && "digest" in error && typeof error.digest === "string" && error.digest.includes("NEXT_REDIRECT")) {
       throw error;
     }
     console.warn("requireAnyRole: Error during auth check:", error);

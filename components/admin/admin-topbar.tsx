@@ -63,7 +63,7 @@ export function AdminTopbar() {
             <Menu className="h-5 w-5 text-white" />
           </Button>
         </SheetTrigger>
-        <SheetContent side="left" className="w-64 p-0">
+        <SheetContent className="left-0 top-0 h-full w-64 max-h-full rounded-none border-r border-t-0 p-0 data-[state=closed]:slide-out-to-left data-[state=open]:slide-in-from-left">
           <div className="flex h-full flex-col border-r border-white/10 bg-[#0b0f18]">
             <div className="flex h-16 items-center border-b border-white/10 px-6">
               <Link href="/admin" className="flex items-center gap-2">

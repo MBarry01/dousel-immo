@@ -14,7 +14,7 @@ import {
 import { cn } from "@/lib/utils";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
-import { useUserRoles } from "@/hooks/use-user-roles";
+import { useUserRoles, type UserRole } from "@/hooks/use-user-roles";
 import { useAuth } from "@/hooks/use-auth";
 
 type NavItem = {
@@ -22,7 +22,7 @@ type NavItem = {
   label: string;
   icon: React.ComponentType<{ className?: string }>;
   permission?: string;
-  roles?: string[];
+  roles?: UserRole[];
 };
 
 const navItems: NavItem[] = [
@@ -91,7 +91,7 @@ export function AdminSidebarClient() {
     if (loading) return true;
     
     // Vérifier si l'utilisateur a au moins un des rôles requis
-    const hasAccess = item.roles.some((role) => userRoles.includes(role));
+    const hasAccess = item.roles.some((role: UserRole) => userRoles.includes(role));
     
     return hasAccess;
   });
@@ -152,7 +152,7 @@ export function AdminSidebarClient() {
             <Menu className="h-5 w-5 text-white" />
           </Button>
         </SheetTrigger>
-        <SheetContent side="left" className="w-64 p-0">
+        <SheetContent className="left-0 top-0 h-full w-64 max-h-full rounded-none border-r border-t-0 p-0 data-[state=closed]:slide-out-to-left data-[state=open]:slide-in-from-left">
           <SidebarContent />
         </SheetContent>
       </Sheet>
