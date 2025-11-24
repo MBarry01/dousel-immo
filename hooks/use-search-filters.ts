@@ -3,7 +3,7 @@
 import { useMemo } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
-import type { PropertyFilters } from "@/data/properties";
+import type { PropertyFilters } from "@/services/propertyService";
 import {
   parseFiltersFromSearchParams,
   serializeFilters,

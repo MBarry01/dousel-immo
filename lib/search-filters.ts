@@ -1,4 +1,4 @@
-import type { PropertyFilters } from "@/data/properties";
+import type { PropertyFilters } from "@/services/propertyService";
 
 const numberOrUndefined = (value?: string | null) => {
   if (value === null || value === undefined || value === "") return undefined;
@@ -19,15 +19,27 @@ const stringOrUndefined = (value?: string | null) => {
 export const parseFiltersFromSearchParams = (
   params: URLSearchParams
 ): PropertyFilters => {
+  // Parser les types multiples (séparés par des virgules)
+  const typesParam = params.get("types");
+  const types = typesParam
+    ? (typesParam.split(",").filter(Boolean) as PropertyFilters["types"])
+    : undefined;
+
   return {
     q: stringOrUndefined(params.get("q")),
+    category: stringOrUndefined(params.get("category")) as PropertyFilters["category"],
+    city: stringOrUndefined(params.get("city")),
+    location: stringOrUndefined(params.get("location")),
     minPrice: numberOrUndefined(params.get("minPrice")),
     maxPrice: numberOrUndefined(params.get("maxPrice")),
+    status: stringOrUndefined(params.get("status")) as PropertyFilters["status"],
     type: stringOrUndefined(params.get("type")) as PropertyFilters["type"],
+    types,
     rooms: numberOrUndefined(params.get("rooms")),
     bedrooms: numberOrUndefined(params.get("bedrooms")),
     hasBackupGenerator: booleanOrUndefined(params.get("hasBackupGenerator")),
     hasWaterTank: booleanOrUndefined(params.get("hasWaterTank")),
+    limit: numberOrUndefined(params.get("limit")),
   };
 };
 
@@ -39,13 +51,19 @@ export const serializeFilters = (
   const entries: [keyof PropertyFilters, PropertyFilters[keyof PropertyFilters]][] =
     [
       ["q", filters.q],
+      ["category", filters.category],
+      ["city", filters.city],
+      ["location", filters.location],
       ["minPrice", filters.minPrice],
       ["maxPrice", filters.maxPrice],
+      ["status", filters.status],
       ["type", filters.type],
+      ["types", filters.types ? filters.types.join(",") : undefined],
       ["rooms", filters.rooms],
       ["bedrooms", filters.bedrooms],
       ["hasBackupGenerator", filters.hasBackupGenerator ? "true" : undefined],
       ["hasWaterTank", filters.hasWaterTank ? "true" : undefined],
+      ["limit", filters.limit],
     ];
 
   entries.forEach(([key, value]) => {
@@ -61,9 +79,15 @@ export const serializeFilters = (
 
 export const hasActiveFilters = (filters: PropertyFilters) => {
   return Boolean(
-    filters.minPrice ||
+    filters.q ||
+      filters.category ||
+      filters.city ||
+      filters.location ||
+      filters.minPrice ||
       filters.maxPrice ||
+      filters.status ||
       filters.type ||
+      filters.types ||
       filters.rooms ||
       filters.bedrooms ||
       filters.hasBackupGenerator ||

@@ -16,7 +16,7 @@ import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import type { PropertyFilters } from "@/services/propertyService";
 import { formatCurrency } from "@/lib/utils";
 
-const propertyTypes: string[] = [
+const propertyTypes: Array<NonNullable<PropertyFilters["type"]>> = [
   "Maison",
   "Appartement",
   "Studio",
@@ -112,15 +112,29 @@ export const FilterDrawer = ({
               Type de bien
             </p>
             <ToggleGroup
-              type="single"
+              type="multiple"
               className="mt-4 flex flex-wrap gap-2"
-              value=""
-              onValueChange={() => {
-                // type filter removed - use category instead
+              value={
+                localFilters.types && localFilters.types.length > 0
+                  ? localFilters.types
+                  : localFilters.type
+                  ? [localFilters.type]
+                  : []
+              }
+              onValueChange={(values) => {
+                setLocalFilters((prev) => ({
+                  ...prev,
+                  types: values.length > 0 ? (values as PropertyFilters["types"]) : undefined,
+                  type: undefined, // Nettoyer l'ancien filtre type si présent
+                }));
               }}
             >
               {propertyTypes.map((type) => (
-                <ToggleGroupItem key={type} value={type}>
+                <ToggleGroupItem
+                  key={type}
+                  value={type}
+                  aria-label={`Filtrer par ${type}`}
+                >
                   {type}
                 </ToggleGroupItem>
               ))}

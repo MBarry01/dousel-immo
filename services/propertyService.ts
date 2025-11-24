@@ -2,6 +2,7 @@ import { supabase } from "@/lib/supabase";
 import type { Property } from "@/types/property";
 
 export type PropertyFilters = {
+  q?: string; // Recherche textuelle
   category?: Property["transaction"];
   city?: string;
   location?: string;
@@ -13,6 +14,7 @@ export type PropertyFilters = {
   hasBackupGenerator?: boolean;
   hasWaterTank?: boolean;
   type?: Property["details"]["type"];
+  types?: Property["details"]["type"][]; // Support pour sélection multiple
   limit?: number;
 };
 
@@ -173,6 +175,13 @@ export const getProperties = async (filters: PropertyFilters = {}) => {
     query = query.eq("validation_status", "approved");
     query = query.eq("status", "disponible");
 
+    // Recherche textuelle (q) : recherche dans le titre, la description et la ville
+    if (filters.q) {
+      query = query.or(
+        `title.ilike.%${filters.q}%,description.ilike.%${filters.q}%,location->>city.ilike.%${filters.q}%`
+      );
+    }
+
     if (filters.category) {
       query = query.eq("category", filters.category);
     }
@@ -205,7 +214,16 @@ export const getProperties = async (filters: PropertyFilters = {}) => {
     if (filters.hasWaterTank) {
       query = query.eq("features->>hasWaterTank", "true");
     }
-    if (filters.type) {
+    // Support pour un seul type ou plusieurs types (OR)
+    if (filters.types && filters.types.length > 0) {
+      // Si plusieurs types sont sélectionnés, utiliser OR
+      // Syntaxe Supabase: "field.eq.value1,field.eq.value2"
+      const orConditions = filters.types
+        .map((type) => `details->>type.eq.${type}`)
+        .join(",");
+      query = query.or(orConditions);
+    } else if (filters.type) {
+      // Support rétrocompatibilité pour un seul type
       query = query.eq("details->>type", filters.type);
     }
 
