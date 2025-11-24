@@ -139,7 +139,15 @@ export const PropertyCard = ({
         className
       )}
     >
-      <div className="relative aspect-[4/3] w-full overflow-hidden rounded-[24px] z-20" data-carousel style={{ pointerEvents: 'auto' }}>
+      <div 
+        className="relative aspect-[4/3] w-full overflow-hidden rounded-[24px] z-40" 
+        data-carousel 
+        style={{ pointerEvents: 'auto' }}
+        onClick={(e) => {
+          // Empêcher la propagation du clic vers le div cliquable de la carte
+          e.stopPropagation();
+        }}
+      >
         <ListingImageCarousel
           images={property.images}
           alt={property.title}
@@ -213,8 +221,14 @@ export const PropertyCard = ({
           </Button>
         </div>
       </div>
+      {/* Zone cliquable uniquement sur la partie inférieure (sous le carousel) */}
+      {/* Le carousel a z-40 donc il est au-dessus et ses flèches (z-50) sont cliquables */}
       <div 
-        className="absolute inset-0 z-30 cursor-pointer"
+        className="absolute bottom-0 left-0 right-0 z-30 cursor-pointer"
+        style={{ 
+          top: 'calc(100% * 0.65)', // Après le carousel (aspect 4/3 + padding ≈ 65% de la hauteur)
+          pointerEvents: 'auto'
+        }}
         onClick={handleCardClick}
         aria-label={`Voir ${property.title}`}
         role="button"

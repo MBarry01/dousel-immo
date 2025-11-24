@@ -9,6 +9,7 @@ import { SuppressHydrationWarning } from "@/components/providers/suppress-hydrat
 import { CookieConsent } from "@/components/ui/cookie-consent";
 import { ConditionalGoogleAnalytics } from "@/components/analytics/conditional-google-analytics";
 import { SpeedInsights } from "@vercel/speed-insights/next";
+import { PhoneMissingDialog } from "@/components/auth/phone-missing-dialog";
 
 import "./globals.css";
 import "react-medium-image-zoom/dist/styles.css";
@@ -38,6 +39,12 @@ export const metadata: Metadata = {
     statusBarStyle: "black-translucent",
     title: "Dousell Immo",
   },
+  other: {
+    "mobile-web-app-capable": "yes",
+    "apple-mobile-web-app-capable": "yes",
+    "apple-mobile-web-app-status-bar-style": "black-translucent",
+    "apple-mobile-web-app-title": "Dousell Immo",
+  },
   icons: {
     icon: [
       { url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
@@ -48,12 +55,6 @@ export const metadata: Metadata = {
       { url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
       { url: "/icons/icon-512.png", sizes: "512x512", type: "image/png" },
     ],
-  },
-  other: {
-    "mobile-web-app-capable": "yes",
-    "apple-mobile-web-app-capable": "yes",
-    "apple-mobile-web-app-status-bar-style": "black-translucent",
-    "apple-mobile-web-app-title": "Dousell Immo",
   },
 };
 
@@ -86,6 +87,7 @@ export default function RootLayout({
         <CookieConsent />
         {gaId && <ConditionalGoogleAnalytics gaId={gaId} />}
         <SpeedInsights />
+        <PhoneMissingDialog />
       </body>
     </html>
   );

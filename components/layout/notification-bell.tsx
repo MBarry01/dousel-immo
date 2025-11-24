@@ -1,7 +1,16 @@
 "use client";
 
 import { useState } from "react";
-import { Bell, Info, CheckCircle, AlertTriangle, XCircle, Check } from "lucide-react";
+import {
+  Bell,
+  BellOff,
+  Info,
+  CheckCircle,
+  AlertTriangle,
+  XCircle,
+  Check,
+  CheckCheck,
+} from "lucide-react";
 import { useRouter } from "next/navigation";
 import { formatDistanceToNow } from "date-fns";
 import { motion, AnimatePresence } from "framer-motion";
@@ -16,6 +25,7 @@ import { cn } from "@/lib/utils";
 import { useNotifications, type Notification, type NotificationType } from "@/hooks/use-notifications";
 import { markNotificationAsRead, markAllNotificationsAsRead } from "@/app/notifications/actions";
 import { toast } from "sonner";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 type NotificationBellProps = {
   userId: string | null;
@@ -28,11 +38,11 @@ const notificationIcons: Record<NotificationType, typeof Info> = {
   error: XCircle,
 };
 
-const notificationColors: Record<NotificationType, string> = {
-  info: "text-blue-500",
-  success: "text-green-500",
-  warning: "text-yellow-500",
-  error: "text-red-500",
+const notificationStyles: Record<NotificationType, string> = {
+  info: "bg-blue-500/10 text-blue-400",
+  success: "bg-green-500/10 text-green-400",
+  warning: "bg-yellow-500/10 text-yellow-400",
+  error: "bg-red-500/10 text-red-400",
 };
 
 export function NotificationBell({ userId }: NotificationBellProps) {
@@ -120,123 +130,86 @@ export function NotificationBell({ userId }: NotificationBellProps) {
         </button>
       </PopoverTrigger>
       <PopoverContent
-        className="w-[90vw] max-w-sm p-0 md:w-96 rounded-xl border border-white/10 bg-[#05080c] text-white shadow-xl z-[100]"
+        className="w-96 max-w-[90vw] p-0 rounded-2xl border border-white/10 bg-[#05080c] text-white shadow-2xl z-[100]"
         align="end"
         sideOffset={8}
       >
         <div className="flex flex-col">
-          {/* Header */}
-          <div className="flex items-center justify-between border-b border-border px-4 py-3">
-            <h3 className="text-sm font-semibold">Notifications</h3>
-            {unreadCount > 0 && (
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-auto p-0 text-xs text-muted-foreground hover:text-foreground"
-                onClick={handleMarkAllAsRead}
-              >
-                <Check className="mr-1 h-3 w-3" />
-                Tout marquer comme lu
-              </Button>
-            )}
+          <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
+            <h3 className="text-sm font-semibold text-white">Notifications</h3>
+            <Button
+              variant="ghost"
+              size="sm"
+              disabled={unreadCount === 0}
+              className="h-auto gap-1 px-2 py-1 text-xs text-white/70 hover:text-white disabled:cursor-not-allowed disabled:text-white/30"
+              onClick={handleMarkAllAsRead}
+            >
+              <CheckCheck className="h-3 w-3" />
+              Tout marquer
+            </Button>
           </div>
 
-          {/* Liste des notifications */}
-          <div className="max-h-[400px] overflow-y-auto">
+          <ScrollArea className="h-[320px] w-full rounded-b-2xl">
             {loading ? (
               <div className="flex items-center justify-center py-8">
                 <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
               </div>
             ) : notifications.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-8 px-4 text-center">
-                <Bell className="mb-2 h-8 w-8 text-muted-foreground opacity-50" />
-                <p className="text-sm text-muted-foreground">
-                  Aucune nouvelle notification.
-                </p>
+              <div className="flex flex-col items-center justify-center py-10 px-6 text-center">
+                <BellOff className="mb-3 h-8 w-8 text-white/40" />
+                <p className="text-sm font-medium text-white">Vous êtes à jour</p>
+                <p className="text-xs text-white/50">Revenez plus tard pour de nouvelles alertes.</p>
               </div>
             ) : (
-              <div className="divide-y divide-border">
+              <div className="divide-y divide-white/5">
                 <AnimatePresence mode="popLayout">
-                  {notifications.map((notification, index) => {
+                  {notifications.map((notification) => {
                     const Icon = notificationIcons[notification.type];
-                    const iconColor = notificationColors[notification.type];
+                    const iconClasses = notificationStyles[notification.type];
 
                     return (
-                      <motion.button
+                      <motion.div
                         key={notification.id}
-                        initial={{ opacity: 0, x: -10 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        exit={{ opacity: 0, x: 10 }}
-                        transition={{
-                          type: "spring",
-                          stiffness: 400,
-                          damping: 30,
-                          delay: index * 0.03,
-                        }}
-                        whileHover={{ x: 2 }}
-                        whileTap={{ scale: 0.98 }}
+                        initial={{ opacity: 0, y: 6 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -6 }}
                         className={cn(
-                          "w-full px-4 py-3 text-left transition-colors hover:bg-accent/50",
-                          !notification.is_read && "bg-accent/30"
+                          "flex gap-4 p-4 transition-colors hover:bg-white/5 cursor-pointer relative border-b border-white/5 last:border-b-0",
+                          !notification.is_read && "bg-white/5"
                         )}
                         onClick={() => handleNotificationClick(notification)}
                       >
-                        <div className="flex items-start gap-3">
-                          <motion.div
-                            initial={{ scale: 0 }}
-                            animate={{ scale: 1 }}
-                            transition={{
-                              type: "spring",
-                              stiffness: 400,
-                              damping: 20,
-                              delay: index * 0.03 + 0.1,
-                            }}
-                            className={cn(
-                              "mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted",
-                              iconColor
-                            )}
-                          >
-                            <Icon className="h-4 w-4" />
-                          </motion.div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-start justify-between gap-2">
-                              <p
-                                className={cn(
-                                  "text-sm font-semibold",
-                                  !notification.is_read && "font-bold"
-                                )}
-                              >
-                                {notification.title}
-                              </p>
-                              {!notification.is_read && (
-                                <motion.span
-                                  initial={{ scale: 0 }}
-                                  animate={{ scale: 1 }}
-                                  transition={{
-                                    type: "spring",
-                                    stiffness: 500,
-                                    damping: 15,
-                                    delay: index * 0.03 + 0.15,
-                                  }}
-                                  className="h-2 w-2 shrink-0 rounded-full bg-primary"
-                                />
-                              )}
-                            </div>
-                            <p className="mt-1 text-xs text-muted-foreground line-clamp-2">
-                              {notification.message}
-                            </p>
-                            <p className="mt-1.5 text-xs text-muted-foreground">
-                              {formatTimeAgo(notification.created_at)}
-                            </p>
-                          </div>
+                        <div
+                          className={cn(
+                            "mt-1 flex h-10 w-10 shrink-0 items-center justify-center rounded-full",
+                            iconClasses
+                          )}
+                        >
+                          <Icon className="h-4 w-4" />
                         </div>
-                      </motion.button>
+                        <div className="flex-1 min-w-0 space-y-2">
+                          <div className="flex items-start justify-between gap-3">
+                            <p className="text-sm font-medium leading-tight text-white">
+                              {notification.title}
+                            </p>
+                            {!notification.is_read && (
+                              <span className="h-2 w-2 shrink-0 rounded-full bg-blue-500" />
+                            )}
+                          </div>
+                          <p className="text-xs text-white/70 line-clamp-2">
+                            {notification.message}
+                          </p>
+                          <p className="text-[10px] uppercase tracking-wide text-white/40">
+                            {formatTimeAgo(notification.created_at)}
+                          </p>
+                        </div>
+                      </motion.div>
                     );
                   })}
                 </AnimatePresence>
               </div>
             )}
-          </div>
+          </ScrollArea>
         </div>
       </PopoverContent>
     </Popover>

@@ -33,8 +33,10 @@ import { StaticMap } from "@/components/property/static-map";
 import { SimilarProperties } from "@/components/property/similar-properties";
 import { ReviewForm } from "@/components/property/review-form";
 import { ReviewItem } from "@/components/property/review-item";
+import { AgentCard } from "@/components/property/agent-card";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Breadcrumbs } from "@/components/ui/breadcrumbs";
 import { analyticsEvents } from "@/lib/analytics";
 import { AGENCY_PHONE, AGENCY_PHONE_DISPLAY } from "@/lib/constants";
 import { useFavoritesStore } from "@/store/use-store";
@@ -60,6 +62,25 @@ export const PropertyDetailView = ({
   const router = useRouter();
   const { addFavorite, removeFavorite, isFavorite } = useFavoritesStore();
   const favorite = isFavorite(property.id);
+
+  const breadcrumbItems = useMemo(() => {
+    const transaction = property.transaction ?? "vente";
+    const categoryLabel = transaction === "location" ? "Louer" : "Acheter";
+    const city = property.location.city || "Dakar";
+
+    return [
+      { label: "Accueil", href: "/" },
+      {
+        label: categoryLabel,
+        href: `/recherche?category=${encodeURIComponent(transaction)}`,
+      },
+      {
+        label: city,
+        href: `/recherche?city=${encodeURIComponent(city)}`,
+      },
+      { label: property.title },
+    ];
+  }, [property]);
 
   const toggleFavorite = () => {
     if (favorite) {
@@ -189,7 +210,8 @@ export const PropertyDetailView = ({
         {/* Colonne Gauche (Infos - span-2) */}
         <div className="lg:col-span-2">
           {/* Header */}
-          <div className="mb-6">
+          <div className="mb-6 space-y-3">
+            <Breadcrumbs items={breadcrumbItems} />
             <div className="mb-2 flex items-center gap-3">
               <span className="rounded-full bg-amber-500/15 px-4 py-1 text-xs font-semibold uppercase tracking-wider text-amber-500">
                 {property.details.type}
@@ -544,90 +566,18 @@ export const PropertyDetailView = ({
           />
         </div>
 
-        {/* Agent Profile */}
+        {/* Propriétaire / Agent Profile */}
         <div className="mb-12 border-t border-gray-200 pt-12 dark:border-white/10">
           <h2 className="mb-6 text-2xl font-semibold text-gray-900 dark:text-white">
-            Faites connaissance avec Agence Dousell
+            {property.owner ? "Proposé par" : "Faites connaissance avec Agence Dousell"}
           </h2>
-          <div className="flex flex-col gap-6 sm:flex-row">
-            <div className="relative h-32 w-32 shrink-0 overflow-hidden rounded-full">
-              <Image
-                src="/agent2.jpg"
-                alt="Amadou Barry"
-                fill
-                className="object-cover object-[center_top]"
-                sizes="128px"
-              />
-            </div>
-            <div className="flex flex-1 flex-col gap-4">
-              <div>
-                <h3 className="mb-2 text-lg font-semibold text-gray-900 dark:text-white">
-                  Amadou Barry
-                </h3>
-                <p className="mb-2 text-gray-700 dark:text-white/80">
-                  Co-fondateur et expert terrain, spécialisé dans les visites, l&apos;accompagnement sur le terrain et la connaissance approfondie du marché dakarois. Votre contact privilégié pour toutes vos démarches immobilières.
-                </p>
-                <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-white/60">
-                  <Clock className="h-4 w-4" />
-                  <span>Répond dans l&apos;heure</span>
-                </div>
-              </div>
-              <div className="flex flex-col gap-3 sm:flex-row">
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        asChild
-                        variant="outline"
-                        className="w-full sm:w-auto rounded-2xl border-gray-200 text-sm font-semibold text-gray-900 hover:bg-gray-100 dark:border-white/20 dark:text-white dark:hover:bg-white/10"
-                        data-property-id={property.id}
-                        data-property-title={property.title}
-                        data-category="contact"
-                        data-label="Phone"
-                        onClick={() => {
-                          analyticsEvents.contactCall(property.id, property.title);
-                        }}
-                      >
-                        <a
-                          href={`tel:${property.agent.phone || property.owner?.phone || AGENCY_PHONE}`}
-                          className="flex items-center justify-center gap-2"
-                        >
-                          <Phone className="h-4 w-4" />
-                          Appeler
-                        </a>
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>{property.agent.phone || property.owner?.phone || AGENCY_PHONE_DISPLAY}</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-                <Button
-                  asChild
-                  className="w-full sm:w-auto rounded-2xl bg-[#25D366] text-sm font-semibold text-white hover:bg-[#20BD5A] dark:bg-[#25D366] dark:hover:bg-[#20BD5A]"
-                  data-property-id={property.id}
-                  data-property-title={property.title}
-                  data-category="contact"
-                  data-label="WhatsApp"
-                  onClick={() => {
-                    analyticsEvents.contactWhatsApp(property.id, property.title);
-                  }}
-                >
-                  <a
-                    href={`https://wa.me/${(property.agent.whatsapp || property.agent.phone || property.owner?.phone || AGENCY_PHONE).replace(/[^0-9]/g, "")}?text=${encodeURIComponent(
-                      `Bonjour, je suis intéressé par le bien ${property.title} (${property.id}) à ${property.location.city}.`
-                    )}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center justify-center gap-2"
-                  >
-                    <MessageCircle className="h-4 w-4" />
-                    WhatsApp
-                  </a>
-                </Button>
-              </div>
-            </div>
-          </div>
+          <AgentCard
+            agent={property.agent}
+            owner={property.owner}
+            property={property}
+            propertyId={property.id}
+            propertyTitle={property.title}
+          />
         </div>
 
         {/* Similar Properties */}

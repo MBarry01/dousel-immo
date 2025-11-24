@@ -214,14 +214,13 @@ export default function RegisterPage() {
                   } 
                   // Si l'email de confirmation est requis
                   else if (result.emailSent) {
+                    // Afficher une alerte claire sans redirection immédiate
+                    setError(null);
                     toast.success("Compte créé !", {
-                      description: "Un email de vérification a été envoyé. Vérifiez votre boîte de réception (et les spams) pour confirmer votre compte.",
-                      duration: 5000,
+                      description: "Un lien de confirmation a été envoyé à votre adresse email. Veuillez cliquer dessus pour activer votre compte.",
+                      duration: 8000,
                     });
-                    // Rediriger vers la page de connexion
-                    setTimeout(() => {
-                      router.push("/login?message=Veuillez confirmer votre email pour vous connecter.");
-                    }, 3000);
+                    // Ne pas rediriger automatiquement, laisser l'utilisateur lire le message
                   } 
                   // Cas par défaut (compte créé mais pas encore confirmé)
                   else {

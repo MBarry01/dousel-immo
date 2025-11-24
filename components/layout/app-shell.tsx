@@ -1,18 +1,48 @@
 "use client";
 
-import { ReactNode } from "react";
+import { ReactNode, useMemo } from "react";
 import { usePathname } from "next/navigation";
 
 import { BottomNav } from "@/components/navigation/bottom-nav";
 import { Header } from "@/components/navigation/header";
 import { Footer } from "@/components/layout/footer";
 import { ScrollToTop } from "@/components/layout/scroll-to-top";
+import { Breadcrumbs } from "@/components/ui/breadcrumbs";
 
 type AppShellProps = {
   children: ReactNode;
 };
 
 const hideFooterRoutes = ["/recherche", "/estimation"];
+
+const segmentLabels: Record<string, string> = {
+  annonce: "Annonce",
+  annonces: "Annonces",
+  biens: "Biens",
+  "a-propos": "À propos",
+  apropos: "À propos",
+  contact: "Contact",
+  compte: "Compte",
+  deposer: "Déposer",
+  recherche: "Recherche",
+  favoris: "Favoris",
+  agence: "Agence",
+  blog: "Blog",
+  notifications: "Notifications",
+  profil: "Profil",
+};
+
+const formatSegmentLabel = (segment: string) => {
+  const normalized = segment.toLowerCase();
+  if (segmentLabels[normalized]) {
+    return segmentLabels[normalized];
+  }
+
+  return segment
+    .split("-")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
+};
 
 export const AppShell = ({ children }: AppShellProps) => {
   const pathname = usePathname();
@@ -21,6 +51,43 @@ export const AppShell = ({ children }: AppShellProps) => {
   const shouldHideFooter = hideFooterRoutes.some((route) =>
     pathname?.startsWith(route)
   );
+
+  const breadcrumbItems = useMemo(() => {
+    if (!pathname || pathname === "/") {
+      return [];
+    }
+
+    const segments = pathname.split("/").filter(Boolean);
+    if (!segments.length) {
+      return [];
+    }
+
+    const items = [{ label: "Accueil", href: "/" }];
+    let cumulativePath = "";
+
+    segments.forEach((segment, index) => {
+      cumulativePath += `/${segment}`;
+      const isLast = index === segments.length - 1;
+      const label = formatSegmentLabel(segment);
+
+      // Éviter d'afficher des IDs opaques (> 24 caractères)
+      if (segment.length > 24) {
+        items.push({
+          label: "Détail",
+        });
+        return;
+      }
+
+      items.push({
+        label,
+        href: isLast ? undefined : cumulativePath,
+      });
+    });
+
+    return items;
+  }, [pathname]);
+
+  const shouldShowBreadcrumbs = breadcrumbItems.length > 1;
 
   if (isPropertyDetail) {
     return (
@@ -37,6 +104,11 @@ export const AppShell = ({ children }: AppShellProps) => {
       <div className="px-4 md:px-6">
         <Header />
         <main className="mx-auto w-full max-w-6xl pb-16 pt-[calc(env(safe-area-inset-top)+4rem)] md:pb-4 md:pt-6">
+          {shouldShowBreadcrumbs && (
+            <div className="mb-6">
+              <Breadcrumbs items={breadcrumbItems} />
+            </div>
+          )}
           {children}
         </main>
       </div>

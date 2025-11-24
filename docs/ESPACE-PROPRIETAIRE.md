@@ -38,7 +38,7 @@ Nouvelles colonnes ajoutées à la table `properties` :
 
 #### Step 2 : L'Offre
 - **Mandat Agence (Gratuit)** : "On s'occupe de tout. Commission au succès."
-- **Diffusion Simple (Payant - 5000 FCFA)** : "Vous gérez vos visites. Votre annonce visible 30 jours."
+- **Diffusion Simple (Payant - 1500 FCFA)** : "Vous gérez vos visites. Votre annonce visible 30 jours."
 
 #### Step 3 : Paiement (si Option B)
 - QR Code placeholder

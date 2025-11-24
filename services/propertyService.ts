@@ -59,9 +59,22 @@ type SupabasePropertyRow = {
     whatsapp?: string;
   };
   owner?: {
+    id?: string;
+    full_name?: string;
+    avatar_url?: string;
+    role?: "particulier" | "agent" | "admin";
     phone?: string;
-    name?: string;
-  };
+    is_verified?: boolean;
+    created_at?: string;
+  } | Array<{
+    id?: string;
+    full_name?: string;
+    avatar_url?: string;
+    role?: "particulier" | "agent" | "admin";
+    phone?: string;
+    is_verified?: boolean;
+    created_at?: string;
+  }>;
   proximites?: {
     transports?: string[];
     ecoles?: string[];
@@ -69,6 +82,7 @@ type SupabasePropertyRow = {
   };
   disponibilite?: string;
   created_at?: string;
+  service_type?: "mandat_confort" | "boost_visibilite";
 };
 
 const mapProperty = (row: SupabasePropertyRow): Property => {
@@ -76,7 +90,12 @@ const mapProperty = (row: SupabasePropertyRow): Property => {
   const specs = row.specs ?? {};
   const features = row.features ?? {};
   const agent = row.agent ?? {};
-  const owner = row.owner ?? {};
+    // Gérer la jointure Supabase : owner peut être un objet ou un tableau
+    // Supabase retourne les jointures sous le nom de l'alias (owner) ou de la table (profiles)
+    const ownerData = Array.isArray(row.owner) 
+      ? row.owner[0] 
+      : (row.owner || (row as any).profiles);
+    const owner = ownerData ?? {};
   const detail = row.details ?? {};
   const proximites = row.proximites;
 
@@ -118,10 +137,15 @@ const mapProperty = (row: SupabasePropertyRow): Property => {
       phone: agent.phone ?? "",
       whatsapp: agent.whatsapp,
     },
-    owner: owner.phone || owner.name
+    owner: owner && (owner.phone || owner.full_name || owner.id)
       ? {
+          id: owner.id,
+          full_name: owner.full_name,
+          avatar_url: owner.avatar_url,
+          role: owner.role || "particulier",
           phone: owner.phone,
-          name: owner.name,
+          is_verified: owner.is_verified || false,
+          created_at: owner.created_at,
         }
       : undefined,
     disponibilite: row.disponibilite ?? "Immédiate",
@@ -130,6 +154,7 @@ const mapProperty = (row: SupabasePropertyRow): Property => {
       proximites.ecoles?.length ||
       proximites.commerces?.length
     ) ? proximites as Property["proximites"] : undefined,
+    service_type: row.service_type,
   };
 };
 
@@ -193,17 +218,31 @@ export const getProperties = async (filters: PropertyFilters = {}) => {
     }
 
     const { data, error } = await query;
-    if (error) throw error;
+    if (error) {
+      console.error("getProperties Supabase error:", {
+        message: error.message,
+        code: error.code,
+        details: error.details,
+        hint: error.hint,
+      });
+      throw error;
+    }
     return (data ?? []).map(mapProperty);
   } catch (error) {
-    console.error("getProperties error", error);
+    console.error("getProperties error:", {
+      error,
+      errorMessage: error instanceof Error ? error.message : String(error),
+      errorStack: error instanceof Error ? error.stack : undefined,
+    });
     return [];
   }
 };
 
 export const getPropertyById = async (id: string) => {
   try {
-    // Sélectionner tous les champs disponibles avec un SELECT * pour éviter les erreurs de colonnes manquantes
+    // Pour l'instant, utiliser directement le fallback (requête séparée)
+    // car la jointure peut ne pas fonctionner si la table profiles n'existe pas encore
+    // ou si la relation n'est pas configurée dans Supabase
     const { data, error } = await supabase
       .from("properties")
       .select("*")
@@ -211,13 +250,6 @@ export const getPropertyById = async (id: string) => {
       .single();
     
     if (error) {
-      console.error("getPropertyById Supabase error:", {
-        message: error.message,
-        code: error.code,
-        details: error.details,
-        hint: error.hint,
-        id,
-      });
       // Si c'est une erreur 404 (not found), c'est normal
       if (error.code === "PGRST116") {
         console.warn("getPropertyById: Property not found for id:", id);
@@ -231,8 +263,45 @@ export const getPropertyById = async (id: string) => {
       return null;
     }
     
+    // Si on a des données et un owner_id, récupérer le profil séparément
+    if (data.owner_id) {
+      try {
+        const { data: profileData, error: profileError } = await supabase
+          .from("profiles")
+          .select("id, full_name, avatar_url, role, phone, is_verified, created_at")
+          .eq("id", data.owner_id)
+          .single();
+        
+        if (!profileError && profileData) {
+          data.owner = profileData;
+        } else if (profileError) {
+          // Si la table profiles n'existe pas encore, c'est normal
+          if (profileError.code === "PGRST116" || profileError.message?.includes("does not exist")) {
+            console.warn("getPropertyById: Table profiles n'existe pas encore ou profil non trouvé", {
+              owner_id: data.owner_id,
+              code: profileError.code,
+              message: profileError.message,
+            });
+          } else {
+            console.warn("getPropertyById: Erreur lors de la récupération du profil", {
+              code: profileError.code,
+              message: profileError.message,
+              owner_id: data.owner_id,
+            });
+          }
+        } else {
+          console.warn("getPropertyById: Aucun profil trouvé pour owner_id", {
+            owner_id: data.owner_id,
+          });
+        }
+      } catch (profileError) {
+        console.warn("getPropertyById: Exception lors de la récupération du profil", profileError);
+      }
+    }
+    
     try {
-      return mapProperty(data as SupabasePropertyRow);
+      const mappedProperty = mapProperty(data as SupabasePropertyRow);
+      return mappedProperty;
     } catch (mappingError) {
       console.error("getPropertyById mapping error:", {
         error: mappingError,

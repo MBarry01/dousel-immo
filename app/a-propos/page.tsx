@@ -186,7 +186,7 @@ export default function AProposPage() {
             <div className="flex flex-col items-center gap-6 sm:flex-row sm:items-start">
               <div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-full border-2 border-amber-500/30">
                 <Image
-                  src="/agent2.jpg"
+                  src="/agent2.png"
                   alt="Amadou Barry"
                   width={96}
                   height={96}

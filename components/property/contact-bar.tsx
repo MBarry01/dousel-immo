@@ -9,6 +9,8 @@ import { formatCurrency } from "@/lib/utils";
 import { hapticFeedback } from "@/lib/haptic";
 import { analyticsEvents } from "@/lib/analytics";
 import { AGENCY_PHONE, AGENCY_PHONE_DISPLAY } from "@/lib/constants";
+import { trackPropertyAction } from "@/app/api/property-stats/actions";
+import { useAuth } from "@/hooks/use-auth";
 import type { Property } from "@/types/property";
 
 type ContactBarProps = {
@@ -16,21 +18,45 @@ type ContactBarProps = {
 };
 
 export const ContactBar = ({ property }: ContactBarProps) => {
-  const handleWhatsApp = useCallback(() => {
-    hapticFeedback.medium();
-    analyticsEvents.contactWhatsApp(property.id, property.title);
-  }, [property.id, property.title]);
+  const { user } = useAuth();
 
-  const handleCall = useCallback(() => {
-    hapticFeedback.medium();
-    analyticsEvents.contactCall(property.id, property.title);
-  }, [property.id, property.title]);
+  // Déterminer le numéro cible selon le type de mandat
+  // Si diffusion_simple (boost_visibilite) ET propriétaire a un téléphone -> utiliser le téléphone du propriétaire
+  // Sinon -> utiliser le téléphone de l'agence
+  const targetPhone =
+    property.service_type === "boost_visibilite" && property.owner?.phone
+      ? property.owner.phone
+      : AGENCY_PHONE;
 
-  // Priorité : agent.whatsapp > agent.phone > owner.phone > AGENCY_PHONE
-  const whatsappNumber = property.agent.whatsapp || property.agent.phone || property.owner?.phone || AGENCY_PHONE;
+  // Pour WhatsApp : priorité agent.whatsapp > targetPhone
+  const whatsappNumber = property.agent.whatsapp || targetPhone;
   const whatsappUrl = `https://wa.me/${whatsappNumber.replace(/[^0-9]/g, "")}?text=${encodeURIComponent(
     `Bonjour, je suis intéressé par le bien ${property.title} (${property.id}) à ${property.location.city}.`
   )}`;
+
+  const handleWhatsApp = useCallback(async () => {
+    hapticFeedback.medium();
+    analyticsEvents.contactWhatsApp(property.id, property.title);
+
+    // Tracker le clic WhatsApp
+    await trackPropertyAction({
+      propertyId: property.id,
+      actionType: "whatsapp_click",
+      userId: user?.id || null,
+    });
+  }, [property.id, property.title, user?.id]);
+
+  const handleCall = useCallback(async () => {
+    hapticFeedback.medium();
+    analyticsEvents.contactCall(property.id, property.title);
+
+    // Tracker le clic téléphone
+    await trackPropertyAction({
+      propertyId: property.id,
+      actionType: "phone_click",
+      userId: user?.id || null,
+    });
+  }, [property.id, property.title, user?.id]);
 
   return (
     <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-white/10 bg-white/90 px-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] pt-3 backdrop-blur-xl dark:bg-black/70">
@@ -63,14 +89,14 @@ export const ContactBar = ({ property }: ContactBarProps) => {
                   asChild
                   onClick={handleCall}
                 >
-                  <a href={`tel:${property.agent.phone || property.owner?.phone || AGENCY_PHONE}`}>
+                  <a href={`tel:${targetPhone}`}>
                     <Phone className="mr-2 h-4 w-4" />
                     Appeler
                   </a>
                 </Button>
               </TooltipTrigger>
               <TooltipContent>
-                <p>{property.agent.phone || property.owner?.phone || AGENCY_PHONE_DISPLAY}</p>
+                <p>{targetPhone === AGENCY_PHONE ? AGENCY_PHONE_DISPLAY : targetPhone}</p>
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>

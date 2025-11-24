@@ -95,7 +95,7 @@ export default async function PropertyPage({ params }: PropertyPageProps) {
   const resolvedParams = await params;
   const property = await getPropertyById(resolvedParams.id);
   if (!property) notFound();
-
+  
   // Récupérer l'utilisateur courant pour afficher ses réactions
   const supabase = await createClient();
   const {

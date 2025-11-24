@@ -38,13 +38,19 @@ export type Property = {
     whatsapp?: string;
   };
   owner?: {
+    id?: string;
+    full_name?: string;
+    avatar_url?: string;
+    role?: "particulier" | "agent" | "admin";
     phone?: string;
-    name?: string;
+    is_verified?: boolean;
+    created_at?: string;
   };
   proximites?: {
     transports: string[];
     ecoles: string[];
     commerces: string[];
   };
+  service_type?: "mandat_confort" | "boost_visibilite";
 };
 

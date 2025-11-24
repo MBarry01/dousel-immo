@@ -65,7 +65,7 @@ export const PropertySection = ({
   const scroll = (direction: "left" | "right") => {
     if (!containerRef.current) return;
 
-    const scrollAmount = 320; // Largeur de la carte + gap
+    const scrollAmount = 400; // Largeur de la carte + gap (ajusté pour le nouvel espacement)
     const scrollDirection = direction === "left" ? -scrollAmount : scrollAmount;
 
     containerRef.current.scrollBy({
@@ -75,7 +75,7 @@ export const PropertySection = ({
   };
 
   return (
-    <section className="space-y-4">
+    <section className="space-y-8 md:space-y-10">
       {/* Header - Style Airbnb */}
       <FadeIn>
         <div className="flex items-center justify-between px-4 md:px-0">
@@ -128,7 +128,7 @@ export const PropertySection = ({
         >
           <StaggerContainer 
             staggerDelay={0.05}
-            className="flex gap-8"
+            className="flex gap-10 md:gap-12"
           >
             {displayedProperties.map((property) => (
               <motion.div

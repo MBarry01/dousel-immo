@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { useForm } from "react-hook-form";
+import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
@@ -13,6 +13,7 @@ import { InfoTooltip } from "@/components/ui/info-tooltip";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { PhoneInput } from "@/components/ui/phone-input";
 import { useAuth } from "@/hooks/use-auth";
 import { submitUserListing } from "@/app/compte/deposer/actions";
 import { createClient } from "@/utils/supabase/client";
@@ -47,6 +48,8 @@ const depositSchema = z
     
     // Step 3: Paiement (si boost_visibilite)
     payment_ref: z.string().optional(),
+    // Contact téléphone (optionnel mais validé si fourni)
+    contact_phone: z.string().optional(),
   })
   .superRefine((data, ctx) => {
     const isTerrain = data.type === "terrain";
@@ -141,6 +144,7 @@ export default function DeposerPage() {
     getValues,
     setValue,
     trigger,
+    control,
     formState: { errors, isValid },
   } = useForm<DepositFormValues>({
     resolver: zodResolver(depositSchema),
@@ -838,7 +842,7 @@ export default function DeposerPage() {
                       </p>
                       <div className="mt-4 flex items-center gap-2">
                         <span className="text-2xl font-bold text-amber-400">
-                          5 000 FCFA
+                          1 500 FCFA
                         </span>
                       </div>
                     </div>
@@ -862,11 +866,37 @@ export default function DeposerPage() {
             >
               <h2 className="text-xl font-semibold">3. Paiement</h2>
 
+              {/* Champ téléphone de contact */}
+              <div>
+                <label className="text-sm text-white/70">
+                  Votre numéro de téléphone (pour vous contacter)
+                </label>
+                <Controller
+                  name="contact_phone"
+                  control={control}
+                  render={({ field: { onChange, value, ...field } }) => (
+                    <PhoneInput
+                      {...field}
+                      value={value || undefined}
+                      onChange={(val) => onChange(val || "")}
+                      defaultCountry="SN"
+                      international
+                      className="mt-2"
+                    />
+                  )}
+                />
+                {errors.contact_phone && (
+                  <p className="mt-1 text-sm text-amber-300">
+                    {errors.contact_phone.message}
+                  </p>
+                )}
+              </div>
+
               {needsPayment ? (
                 <>
                   <div className="rounded-2xl border border-white/10 bg-white/5 p-6 text-center">
                     <p className="text-sm text-white/70 mb-4">
-                      Scannez le QR Code ou envoyez 5 000 FCFA à ce numéro Wave/OM
+                      Scannez le QR Code ou envoyez 1 500 FCFA à ce numéro Wave/OM
                     </p>
                     <div className="mx-auto mb-4 h-48 w-48 rounded-xl bg-white/10 flex items-center justify-center">
                       <span className="text-white/40">QR Code</span>
