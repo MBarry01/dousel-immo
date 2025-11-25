@@ -90,7 +90,7 @@ export async function checkPasswordViaEdge(password: string) {
 
     // 3) Rechercher le suffixe retourné par la fonction
     const found = json.items.find(
-      (item) => item.suffix?.toUpperCase() === suffix.toUpperCase()
+      (item: { suffix?: string; count?: number }) => item.suffix?.toUpperCase() === suffix.toUpperCase()
     );
 
     if (found) {

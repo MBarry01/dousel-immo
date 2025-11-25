@@ -20,6 +20,7 @@ export async function checkPasswordHIBPServer(
     if (!password || password.trim().length === 0) {
       return {
         success: false,
+        breached: false,
         error: "Password is required",
       };
     }
@@ -51,6 +52,7 @@ export async function checkPasswordHIBPServer(
       console.error("HIBP API error:", res.status, res.statusText);
       return {
         success: false,
+        breached: false,
         error: `HIBP responded ${res.status}`,
       };
     }
@@ -93,6 +95,7 @@ export async function checkPasswordHIBPServer(
     console.error("checkPasswordHIBPServer error:", err);
     return {
       success: false,
+      breached: false,
       error:
         err instanceof Error
           ? err.message
