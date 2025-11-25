@@ -60,74 +60,75 @@ type SupabasePropertyRow = {
     phone?: string;
     whatsapp?: string;
   };
+  service_type?: "mandat_confort" | "boost_visibilite";
+  contact_phone?: string;
+  created_at: string;
   owner?: {
-    id?: string;
-    full_name?: string;
-    avatar_url?: string;
+    id: string;
+    full_name: string;
+    avatar_url: string;
     role?: "particulier" | "agent" | "admin";
     phone?: string;
     is_verified?: boolean;
     created_at?: string;
-  } | Array<{
-    id?: string;
-    full_name?: string;
-    avatar_url?: string;
+  } | {
+    id: string;
+    full_name: string;
+    avatar_url: string;
     role?: "particulier" | "agent" | "admin";
     phone?: string;
     is_verified?: boolean;
     created_at?: string;
-  }>;
+  }[];
+  disponibilite?: string;
   proximites?: {
     transports?: string[];
     ecoles?: string[];
     commerces?: string[];
   };
-  disponibilite?: string;
-  created_at?: string;
-  service_type?: "mandat_confort" | "boost_visibilite";
 };
 
 const mapProperty = (row: SupabasePropertyRow): Property => {
-  const location = row.location ?? {};
-  const specs = row.specs ?? {};
-  const features = row.features ?? {};
-  const agent = row.agent ?? {};
-    // Gérer la jointure Supabase : owner peut être un objet ou un tableau
-    // Supabase retourne les jointures sous le nom de l'alias (owner) ou de la table (profiles)
-    const ownerData = Array.isArray(row.owner) 
-      ? row.owner[0] 
-      : (row.owner || (row as any).profiles);
-    const owner = ownerData ?? {};
-  const detail = row.details ?? {};
+  const agent = row.agent || {};
+  const features = row.features || {};
+  const details = row.details || {};
+  const specs = row.specs || {};
+  const location = row.location || {};
   const proximites = row.proximites;
+
+  // Gérer le cas où owner est un tableau (join) ou un objet
+  const ownerData = Array.isArray(row.owner)
+    ? row.owner[0]
+    : (row.owner || (row as any).profiles);
+  const owner = ownerData ?? {};
 
   return {
     id: row.id,
     title: row.title,
     description: row.description,
     price: row.price,
-    transaction: row.category ?? row.transaction ?? "vente",
-    status: row.status ?? "disponible",
+    transaction: row.transaction || row.category || "vente",
+    status: row.status || "disponible",
     location: {
       city: location.city ?? "",
       address: location.address ?? "",
       landmark: location.landmark ?? "",
-      coords: location.coords ?? { lat: 0, lng: 0 },
+      coords: location.coords ?? { lat: 14.6928, lng: -17.4467 },
     },
     specs: {
       surface: specs.surface ?? 0,
       rooms: specs.rooms ?? 0,
       bedrooms: specs.bedrooms ?? 0,
       bathrooms: specs.bathrooms ?? 0,
-      dpe: specs.dpe ?? "B",
+      dpe: specs.dpe ?? "C",
     },
     details: {
-      type: detail.type ?? "Appartement",
-      year: detail.year ?? 0,
-      heating: detail.heating ?? "",
-      charges: detail.charges,
-      taxeFonciere: detail.taxeFonciere,
-      parking: detail.parking,
+      type: details.type ?? "Appartement",
+      year: details.year ?? 0,
+      heating: details.heating ?? "",
+      charges: details.charges,
+      taxeFonciere: details.taxeFonciere,
+      parking: details.parking,
       hasBackupGenerator: features.hasGenerator ?? false,
       hasWaterTank: features.hasWaterTank ?? false,
       security: features.security ?? false,
@@ -141,14 +142,14 @@ const mapProperty = (row: SupabasePropertyRow): Property => {
     },
     owner: owner && (owner.phone || owner.full_name || owner.id)
       ? {
-          id: owner.id,
-          full_name: owner.full_name,
-          avatar_url: owner.avatar_url,
-          role: owner.role || "particulier",
-          phone: owner.phone,
-          is_verified: owner.is_verified || false,
-          created_at: owner.created_at,
-        }
+        id: owner.id,
+        full_name: owner.full_name,
+        avatar_url: owner.avatar_url,
+        role: owner.role || "particulier",
+        phone: owner.phone,
+        is_verified: owner.is_verified || false,
+        created_at: owner.created_at,
+      }
       : undefined,
     disponibilite: row.disponibilite ?? "Immédiate",
     proximites: proximites && (
@@ -157,6 +158,7 @@ const mapProperty = (row: SupabasePropertyRow): Property => {
       proximites.commerces?.length
     ) ? proximites as Property["proximites"] : undefined,
     service_type: row.service_type,
+    contact_phone: row.contact_phone,
   };
 };
 
@@ -266,7 +268,7 @@ export const getPropertyById = async (id: string) => {
       .select("*")
       .eq("id", id)
       .single();
-    
+
     if (error) {
       // Si c'est une erreur 404 (not found), c'est normal
       if (error.code === "PGRST116") {
@@ -275,12 +277,12 @@ export const getPropertyById = async (id: string) => {
       }
       throw error;
     }
-    
+
     if (!data) {
       console.warn("getPropertyById: No data returned for id:", id);
       return null;
     }
-    
+
     // Si on a des données et un owner_id, récupérer le profil séparément
     if (data.owner_id) {
       try {
@@ -289,7 +291,7 @@ export const getPropertyById = async (id: string) => {
           .select("id, full_name, avatar_url, role, phone, is_verified, created_at")
           .eq("id", data.owner_id)
           .single();
-        
+
         if (!profileError && profileData) {
           data.owner = profileData;
         } else if (profileError) {
@@ -316,9 +318,10 @@ export const getPropertyById = async (id: string) => {
         console.warn("getPropertyById: Exception lors de la récupération du profil", profileError);
       }
     }
-    
+
     try {
       const mappedProperty = mapProperty(data as SupabasePropertyRow);
+
       return mappedProperty;
     } catch (mappingError) {
       console.error("getPropertyById mapping error:", {

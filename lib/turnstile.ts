@@ -23,6 +23,12 @@ export async function verifyTurnstileToken(token: string): Promise<{
     };
   }
 
+  // Bypass pour le développement
+  if (process.env.NODE_ENV === "development" && token === "dev-token") {
+    console.log("⚠️ Bypass Turnstile activé (mode développement)");
+    return { success: true };
+  }
+
   try {
     const response = await fetch(
       "https://challenges.cloudflare.com/turnstile/v0/siteverify",
@@ -50,10 +56,10 @@ export async function verifyTurnstileToken(token: string): Promise<{
 
     if (!data.success) {
       console.warn("⚠️ Vérification Turnstile échouée:", data);
-      
+
       // Messages d'erreur plus spécifiques
       let errorMessage = "Vérification anti-robot échouée. Veuillez réessayer.";
-      
+
       if (data["error-codes"] && Array.isArray(data["error-codes"])) {
         const errorCodes = data["error-codes"];
         if (errorCodes.includes("timeout-or-duplicate")) {
@@ -64,7 +70,7 @@ export async function verifyTurnstileToken(token: string): Promise<{
           errorMessage = "Erreur de configuration. Veuillez contacter le support.";
         }
       }
-      
+
       return {
         success: false,
         error: errorMessage,

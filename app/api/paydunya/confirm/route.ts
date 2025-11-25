@@ -21,16 +21,34 @@ export async function GET(request: Request) {
     }
 
     const invoice = await checkPayDunyaInvoiceStatus(token);
+    
+    // Log complet pour debugging
+    console.log("🔍 Réponse PayDunya complète:", JSON.stringify(invoice, null, 2));
+    
+    // Essayer plusieurs chemins pour trouver le statut
     const status =
       (invoice as any)?.status ||
       (invoice as any)?.invoice_status ||
       (invoice as any)?.invoice?.status ||
       (invoice as any)?.state ||
-      null;
+      (invoice as any)?.response_code === "00" ? "completed" : null;
+
+    console.log("📊 Statut extrait:", status);
+    console.log("📊 Response code:", (invoice as any)?.response_code);
+    console.log("📊 Response text:", (invoice as any)?.response_text);
+
+    // Vérifier si le paiement est complété selon plusieurs critères
+    const isCompleted = 
+      status === "completed" ||
+      status === "paid" ||
+      (invoice as any)?.response_code === "00" ||
+      (invoice as any)?.response_text?.toLowerCase().includes("success") ||
+      (invoice as any)?.response_text?.toLowerCase().includes("completed");
 
     return Response.json({
       success: true,
-      status,
+      status: isCompleted ? "completed" : status || "pending",
+      isCompleted,
       response: invoice,
     });
   } catch (error) {

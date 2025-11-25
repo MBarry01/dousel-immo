@@ -181,11 +181,6 @@ export default function PlanifierVisitePage() {
               setCaptchaToken(null);
               // Le widget se réinitialise automatiquement
             }}
-            onError={() => {
-              setCaptchaToken(null);
-            }}
-            theme="auto"
-            className="my-4"
           />
 
           <Button

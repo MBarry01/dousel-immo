@@ -189,30 +189,30 @@ export default function RegisterPage() {
             action={async (formData: FormData) => {
               setError(null);
               setValidationErrors({});
-              
+
               if (!captchaToken) {
                 toast.error("Veuillez compléter la vérification anti-robot");
                 return;
               }
-              
+
               formData.append("turnstileToken", captchaToken);
-              
+
               // Validation côté client
               const fullName = formData.get("fullName") as string;
               const email = formData.get("email") as string;
               const phone = formData.get("phone") as string;
               const password = formData.get("password") as string;
-              
+
               const errors: typeof validationErrors = {};
-              
+
               if (!fullName || fullName.trim().length < 2) {
                 errors.fullName = "Le nom complet doit contenir au moins 2 caractères";
               }
-              
+
               if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
                 errors.email = "Adresse email invalide";
               }
-              
+
               // Validation du téléphone (format international)
               if (!phone || phone.trim().length < 8) {
                 errors.phone = "Numéro de téléphone invalide";
@@ -223,17 +223,17 @@ export default function RegisterPage() {
                   errors.phone = "Numéro de téléphone invalide";
                 }
               }
-              
+
               if (!password || password.length < 6) {
                 errors.password = "Le mot de passe doit contenir au moins 6 caractères";
               }
-              
+
               if (Object.keys(errors).length > 0) {
                 setValidationErrors(errors);
                 toast.error("Veuillez corriger les erreurs dans le formulaire");
                 return;
               }
-              
+
               // La vérification HIBP est maintenant faite côté serveur dans signup()
               startTransition(async () => {
                 const result = await signup(formData);
@@ -271,7 +271,7 @@ export default function RegisterPage() {
                       router.push("/");
                       router.refresh();
                     }, 1500);
-                  } 
+                  }
                   // Si l'email de confirmation est requis
                   else if (result.emailSent) {
                     // Afficher une alerte claire sans redirection immédiate
@@ -283,7 +283,7 @@ export default function RegisterPage() {
                       duration: 8000,
                     });
                     // Ne pas rediriger automatiquement, laisser l'utilisateur lire le message
-                  } 
+                  }
                   // Cas par défaut (compte créé mais pas encore confirmé)
                   else {
                     toast.success("Compte créé avec succès !", {
@@ -316,7 +316,7 @@ export default function RegisterPage() {
                       Email de confirmation envoyé
                     </h3>
                     <p className="text-sm text-blue-200/80 mb-3">
-                      Un lien de confirmation a été envoyé à <strong>{userEmail}</strong>. 
+                      Un lien de confirmation a été envoyé à <strong>{userEmail}</strong>.
                       Cliquez sur le lien dans l'email pour activer votre compte.
                     </p>
                     <p className="text-xs text-blue-200/60 mb-3">
@@ -377,9 +377,8 @@ export default function RegisterPage() {
                   required
                   minLength={2}
                   maxLength={100}
-                  className={`h-12 rounded-xl border-white/10 bg-white/5 pl-10 text-white placeholder:text-white/40 focus:border-amber-500 focus:ring-amber-500 ${
-                    validationErrors.fullName ? "border-red-500/50" : ""
-                  }`}
+                  className={`h-12 rounded-xl border-white/10 bg-white/5 pl-10 text-white placeholder:text-white/40 focus:border-amber-500 focus:ring-amber-500 ${validationErrors.fullName ? "border-red-500/50" : ""
+                    }`}
                 />
               </div>
               {validationErrors.fullName && (
@@ -400,9 +399,8 @@ export default function RegisterPage() {
                   type="email"
                   placeholder="oumar@example.com"
                   required
-                  className={`h-12 rounded-xl border-white/10 bg-white/5 pl-10 text-white placeholder:text-white/40 focus:border-amber-500 focus:ring-amber-500 ${
-                    validationErrors.email ? "border-red-500/50" : ""
-                  }`}
+                  className={`h-12 rounded-xl border-white/10 bg-white/5 pl-10 text-white placeholder:text-white/40 focus:border-amber-500 focus:ring-amber-500 ${validationErrors.email ? "border-red-500/50" : ""
+                    }`}
                 />
               </div>
               {validationErrors.email && (
@@ -424,9 +422,8 @@ export default function RegisterPage() {
                 defaultCountry="SN"
                 international
                 placeholder="Entrez votre numéro"
-                className={`${
-                  validationErrors.phone ? "border-red-500/50" : ""
-                }`}
+                className={`${validationErrors.phone ? "border-red-500/50" : ""
+                  }`}
                 required
               />
               {/* Input caché pour envoyer la valeur dans le FormData */}
@@ -489,11 +486,6 @@ export default function RegisterPage() {
                 setCaptchaToken(null);
                 // Le widget se réinitialise automatiquement
               }}
-              onError={() => {
-                setCaptchaToken(null);
-              }}
-              theme="auto"
-              className="my-4"
             />
 
             {/* Submit Button */}

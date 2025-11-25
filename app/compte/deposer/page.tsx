@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -19,10 +19,9 @@ import { submitUserListing } from "@/app/compte/deposer/actions";
 import { createClient } from "@/utils/supabase/client";
 import Link from "next/link";
 
-// Schéma simplifié pour les particuliers avec validation conditionnelle
+// Schéma de validation complet
 const depositSchema = z
   .object({
-    // Step 1: Le Bien
     type: z.enum(["villa", "appartement", "terrain", "immeuble"]),
     title: z.string().min(3, "Le titre doit contenir au moins 3 caractères"),
     description: z.string().min(10, "La description doit contenir au moins 10 caractères"),
@@ -33,29 +32,21 @@ const depositSchema = z
     address: z.string().min(3, "L'adresse est requise"),
     landmark: z.string().min(3, "Le point de repère est requis"),
     
-    // Champs conditionnels pour les terrains
     surface: z.number().min(10, "La surface doit être d'au moins 10 m²").optional(),
     surfaceTotale: z.number().min(10, "La surface totale doit être d'au moins 10 m²").optional(),
     juridique: z.enum(["titre-foncier", "bail", "deliberation", "nicad"]).optional(),
-    
-    // Champs conditionnels pour les biens construits
     rooms: z.number().min(1).optional(),
     bedrooms: z.number().min(0).optional(),
     bathrooms: z.number().min(0).optional(),
     
-    // Step 2: L'Offre
     service_type: z.enum(["mandat_confort", "boost_visibilite"]),
-    
-    // Step 3: Paiement (si boost_visibilite)
     payment_ref: z.string().optional(),
-    // Contact téléphone (optionnel mais validé si fourni)
     contact_phone: z.string().optional(),
   })
   .superRefine((data, ctx) => {
     const isTerrain = data.type === "terrain";
     
     if (isTerrain) {
-      // Pour les terrains : surface totale et juridique requis
       if (!data.surfaceTotale || data.surfaceTotale < 10) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
@@ -71,7 +62,6 @@ const depositSchema = z
         });
       }
     } else {
-      // Pour les autres types : surface, rooms, bedrooms, bathrooms requis
       if (!data.surface || data.surface < 10) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
@@ -130,21 +120,20 @@ const typesBien = [
   { value: "immeuble", label: "Immeuble / Commercial", icon: Store },
 ];
 
-import { Suspense } from "react";
-
 function DeposerPageContent() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const { user, loading } = useAuth();
+  
   const [step, setStep] = useState(1);
   const [imageUrls, setImageUrls] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [uploading, setUploading] = useState(false);
+  
+  // États Paiement - FLUX STRICT
   const [paymentToken, setPaymentToken] = useState<string | null>(null);
-  const [paymentVerification, setPaymentVerification] = useState<
-    "idle" | "checking" | "success" | "error"
-  >("idle");
+  const [paymentVerification, setPaymentVerification] = useState<"idle" | "checking" | "success" | "error">("idle");
   const [paymentMessage, setPaymentMessage] = useState<string | null>(null);
 
   const {
@@ -154,7 +143,7 @@ function DeposerPageContent() {
     setValue,
     trigger,
     control,
-    formState: { errors, isValid },
+    formState: { errors },
   } = useForm<DepositFormValues>({
     resolver: zodResolver(depositSchema),
     mode: "onChange",
@@ -173,25 +162,93 @@ function DeposerPageContent() {
 
   // Scroll vers le haut à chaque changement d'étape
   useEffect(() => {
-    window.scrollTo({
-      top: 0,
-      left: 0,
-      behavior: "instant",
-    });
+    window.scrollTo({ top: 0, left: 0, behavior: "instant" });
   }, [step]);
 
-  // Restaurer un paiement déjà confirmé (ex: refresh)
+  // Restaurer un paiement déjà confirmé (ex: refresh) ET forcer l'étape 3
   useEffect(() => {
     if (typeof window === "undefined") return;
     const storedToken = localStorage.getItem("paydunya_payment_token");
     const verified = localStorage.getItem("paydunya_payment_verified");
+    const storedStep = localStorage.getItem("deposit_form_step");
+    const storedFormData = localStorage.getItem("deposit_form_data");
+    const storedImages = localStorage.getItem("deposit_form_images");
+    
+    // Restaurer les valeurs du formulaire sauvegardées
+    if (storedFormData) {
+      try {
+        const formData = JSON.parse(storedFormData);
+        // Restaurer chaque champ du formulaire
+        Object.keys(formData).forEach((key) => {
+          if (formData[key] !== undefined && formData[key] !== null) {
+            setValue(key as keyof DepositFormValues, formData[key]);
+          }
+        });
+        console.log("✅ Données du formulaire restaurées depuis localStorage");
+      } catch (error) {
+        console.error("Erreur lors de la restauration des données du formulaire:", error);
+      }
+    }
+    
+    // Restaurer les images
+    if (storedImages) {
+      try {
+        const images = JSON.parse(storedImages);
+        if (Array.isArray(images)) {
+          setImageUrls(images);
+          console.log("✅ Images restaurées depuis localStorage:", images.length);
+        }
+      } catch (error) {
+        console.error("Erreur lors de la restauration des images:", error);
+      }
+    }
+    
+    // Si on a un paiement vérifié, on doit être à l'étape 3
     if (storedToken && verified === "true") {
       setPaymentToken(storedToken);
       setPaymentVerification("success");
+      // Forcer l'étape 3 si on revient avec un paiement validé
+      if (storedStep === "3" || needsPayment) {
+        setStep(3);
+      }
+    } else if (storedStep) {
+      // Restaurer l'étape sauvegardée
+      const stepNum = parseInt(storedStep, 10);
+      if (stepNum >= 1 && stepNum <= 3) {
+        setStep(stepNum);
+      }
     }
   }, []);
 
-  // Gérer le retour de PayDunya via les query params (?payment=...)
+  // Sauvegarder l'étape ET les valeurs du formulaire dans localStorage à chaque changement
+  useEffect(() => {
+    if (typeof window !== "undefined" && step >= 1 && step <= 3) {
+      localStorage.setItem("deposit_form_step", step.toString());
+      
+      // Sauvegarder toutes les valeurs du formulaire
+      const currentValues = getValues();
+      try {
+        localStorage.setItem("deposit_form_data", JSON.stringify(currentValues));
+        console.log("💾 Données du formulaire sauvegardées, step:", step);
+      } catch (error) {
+        console.error("Erreur lors de la sauvegarde des données du formulaire:", error);
+      }
+    }
+  }, [step]);
+
+  // Sauvegarder les images dans localStorage à chaque changement
+  useEffect(() => {
+    if (typeof window !== "undefined" && imageUrls.length > 0) {
+      try {
+        localStorage.setItem("deposit_form_images", JSON.stringify(imageUrls));
+        console.log("💾 Images sauvegardées:", imageUrls.length);
+      } catch (error) {
+        console.error("Erreur lors de la sauvegarde des images:", error);
+      }
+    }
+  }, [imageUrls]);
+
+  // --- LOGIQUE DE RETOUR PAIEMENT (FLUX STRICT : PAS D'AUTO-SUBMIT) ---
   useEffect(() => {
     const paymentStatus = searchParams?.get("payment");
     if (!paymentStatus) return;
@@ -208,6 +265,11 @@ function DeposerPageContent() {
         clearPaymentQuery();
         return;
       }
+      
+      // FORCER L'ÉTAPE 3 IMMÉDIATEMENT pour éviter de revenir au début
+      setStep(3);
+      localStorage.setItem("deposit_form_step", "3");
+      
       const token = localStorage.getItem("paydunya_payment_token");
       if (!token) {
         setPaymentVerification("error");
@@ -224,25 +286,43 @@ function DeposerPageContent() {
 
       const verifyPayment = async () => {
         try {
+          console.log("🔍 Vérification du paiement avec token:", token);
           const res = await fetch(`/api/paydunya/confirm?token=${token}`);
           const data = await res.json();
+          
+          console.log("📥 Réponse de vérification PayDunya:", data);
+          
           if (!res.ok || !data?.success) {
+            console.error("❌ Erreur de vérification:", data);
             throw new Error(data?.error || "Vérification impossible");
           }
 
-          if (data.status === "completed") {
+          // Accepter plusieurs statuts de confirmation
+          const isPaymentCompleted = 
+            data.status === "completed" || 
+            data.isCompleted || 
+            data.status === "paid" ||
+            (data.response?.response_code === "00");
+
+          console.log("✅ Paiement complété?", isPaymentCompleted, "Statut:", data.status);
+
+          if (isPaymentCompleted) {
             localStorage.setItem("paydunya_payment_verified", "true");
             setPaymentToken(token);
-            setPaymentVerification("success");
+            setPaymentVerification("success"); // ✅ SUCCÈS MAIS PAS D'AUTO-SUBMIT
             setPaymentMessage(null);
+            // S'assurer qu'on est bien à l'étape 3
+            setStep(3);
+            localStorage.setItem("deposit_form_step", "3");
             toast.success("Paiement confirmé ✅", {
-              description: "Vous pouvez finaliser votre annonce.",
+              description: "Veuillez cliquer sur 'Confirmer le dépôt' pour terminer.",
             });
           } else {
-            throw new Error("Paiement non confirmé par PayDunya");
+            console.error("❌ Statut de paiement non confirmé:", data);
+            throw new Error(`Paiement non confirmé. Statut: ${data.status || "inconnu"}`);
           }
         } catch (error) {
-          console.error("Vérification PayDunya échouée:", error);
+          console.error("❌ Vérification PayDunya échouée:", error);
           setPaymentVerification("error");
           setPaymentToken(null);
           setPaymentMessage("Le paiement n'a pas été confirmé. Merci de réessayer.");
@@ -311,12 +391,10 @@ function DeposerPageContent() {
       const uploadedUrls: string[] = [];
 
       for (const file of fileArray) {
-        // Générer un nom de fichier unique
         const fileExt = file.name.split(".").pop();
         const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
         const filePath = fileName;
 
-        // Upload vers Supabase Storage
         const { error: uploadError } = await supabase.storage
           .from("properties")
           .upload(filePath, file, {
@@ -329,7 +407,6 @@ function DeposerPageContent() {
           throw uploadError;
         }
 
-        // Obtenir l'URL publique
         const {
           data: { publicUrl },
         } = supabase.storage.from("properties").getPublicUrl(filePath);
@@ -350,17 +427,31 @@ function DeposerPageContent() {
     }
   };
 
+  // --- SOUMISSION FINALE (APPELÉE UNIQUEMENT PAR CLIC MANUEL) ---
   const onSubmit = async (values: DepositFormValues) => {
-    console.log("🔄 Début de onSubmit...", { 
-      step, 
-      values: { ...values, images: imageUrls.length }, 
-      imageUrlsCount: imageUrls.length,
-      needsPayment 
-    });
+    // PROTECTION STRICTE : Vérifier qu'on est bien à l'étape 3 EN PREMIER
+    if (step !== 3) {
+      console.error("❌ BLOCAGE : Pas à l'étape 3, step actuel:", step);
+      toast.error("Formulaire incomplet", {
+        description: `Vous devez compléter toutes les étapes. Étape actuelle: ${step}/3`,
+      });
+      setSubmitting(false);
+      return;
+    }
+
+    // Validation : vérifier que les champs essentiels sont remplis
+    if (!values.title || values.title.trim().length < 3) {
+      console.error("❌ BLOCAGE : Titre manquant ou invalide");
+      toast.error("Formulaire incomplet", {
+        description: "Le titre de l'annonce est requis.",
+      });
+      setSubmitting(false);
+      return;
+    }
 
     // Validation : au moins une image est requise
     if (imageUrls.length === 0) {
-      console.error("❌ Aucune image");
+      console.error("❌ BLOCAGE : Aucune image");
       toast.error("Au moins une photo est requise", {
         description: "Veuillez ajouter au moins une photo de votre bien.",
       });
@@ -374,19 +465,9 @@ function DeposerPageContent() {
       (!paymentToken || paymentVerification !== "success") &&
       !values.payment_ref?.trim()
     ) {
-      console.error("❌ Paiement non effectué");
+      console.error("❌ BLOCAGE : Paiement non effectué");
       toast.error("Paiement requis", {
         description: "Veuillez effectuer le paiement avant de finaliser votre annonce.",
-      });
-      setSubmitting(false);
-      return;
-    }
-
-    // Validation : s'assurer qu'on est à l'étape 3
-    if (step !== 3) {
-      console.error("❌ Pas à l'étape 3:", step);
-      toast.error("Formulaire incomplet", {
-        description: "Veuillez compléter toutes les étapes du formulaire.",
       });
       setSubmitting(false);
       return;
@@ -405,7 +486,7 @@ function DeposerPageContent() {
       const result = await submitUserListing({
         ...values,
         images: imageUrls,
-        payment_ref: paymentToken || values.payment_ref, // Utiliser le token PayDunya si disponible
+        payment_ref: paymentToken || values.payment_ref,
       });
 
       console.log("📥 Réponse reçue de submitUserListing:", result);
@@ -424,9 +505,12 @@ function DeposerPageContent() {
             : "Votre annonce est en attente de validation par notre équipe.",
           duration: 5000,
         });
-        // Nettoyer le token PayDunya du localStorage
+        // Nettoyer le token PayDunya, l'étape ET les données du formulaire
         localStorage.removeItem("paydunya_payment_token");
         localStorage.removeItem("paydunya_payment_verified");
+        localStorage.removeItem("deposit_form_step");
+        localStorage.removeItem("deposit_form_data");
+        localStorage.removeItem("deposit_form_images");
         setPaymentToken(null);
         setPaymentVerification("idle");
         // Petit délai pour voir le toast avant la redirection
@@ -443,10 +527,6 @@ function DeposerPageContent() {
     } catch (error) {
       console.error("❌ Erreur lors du dépôt:", error);
       const errorMessage = error instanceof Error ? error.message : "Une erreur inattendue est survenue";
-      console.error("❌ Détails de l'erreur:", {
-        message: errorMessage,
-        stack: error instanceof Error ? error.stack : undefined,
-      });
       toast.error("Erreur lors du dépôt de l'annonce", {
         description: errorMessage,
         duration: 6000,
@@ -456,7 +536,7 @@ function DeposerPageContent() {
     }
   };
 
-  // Handler pour le bouton submit (évite les problèmes de sérialisation dans Next.js 16)
+  // Handler pour le bouton submit
   const handleSubmitClick = async (e?: React.MouseEvent<HTMLButtonElement>) => {
     e?.preventDefault();
     e?.stopPropagation();
@@ -466,12 +546,32 @@ function DeposerPageContent() {
       
       // Valider tous les champs du formulaire
       const isValid = await trigger();
-      console.log("✅ Validation du formulaire:", { isValid, errors: Object.keys(errors) });
+      const currentValues = getValues();
+      console.log("✅ Validation du formulaire:", { 
+        isValid, 
+        errorsCount: Object.keys(errors).length,
+        errors: errors,
+        valuesPresent: {
+          title: !!currentValues.title,
+          price: !!currentValues.price,
+          description: !!currentValues.description,
+          city: !!currentValues.city,
+          district: !!currentValues.district
+        }
+      });
       
       if (!isValid) {
-        console.error("❌ Formulaire invalide:", errors);
+        console.error("❌ Formulaire invalide. Erreurs détaillées:", errors);
+        console.error("❌ Valeurs actuelles:", currentValues);
+        
+        // Afficher les erreurs spécifiques
+        const errorMessages = Object.entries(errors)
+          .map(([field, error]) => `${field}: ${error?.message}`)
+          .filter(Boolean)
+          .join(", ");
+        
         toast.error("Veuillez corriger les erreurs du formulaire", {
-          description: Object.values(errors).map(e => e?.message).filter(Boolean).join(", ") || "Certains champs sont manquants ou invalides",
+          description: errorMessages || "Certains champs sont manquants ou invalides. Vérifiez que vous avez bien rempli toutes les étapes du formulaire.",
         });
         return;
       }
@@ -515,7 +615,6 @@ function DeposerPageContent() {
       let fieldsToValidate: (keyof DepositFormValues)[] = [];
       
       if (step === 1) {
-        // Valider les champs de l'étape 1
         fieldsToValidate = [
           "type",
           "title",
@@ -534,20 +633,18 @@ function DeposerPageContent() {
           fieldsToValidate.push("surface", "rooms", "bedrooms", "bathrooms");
         }
       } else if (step === 2) {
-        // Valider l'offre
         fieldsToValidate = ["service_type"];
       }
       
       const isValidStep = await trigger(fieldsToValidate);
       
       if (isValidStep) {
+        // Sauvegarder les valeurs actuelles avant de changer d'étape
+        const currentValues = getValues();
+        localStorage.setItem("deposit_form_data", JSON.stringify(currentValues));
+        
         setStep(step + 1);
-        // Scroll vers le haut de la page après le changement d'étape
-        window.scrollTo({
-          top: 0,
-          left: 0,
-          behavior: "instant",
-        });
+        window.scrollTo({ top: 0, left: 0, behavior: "instant" });
       } else {
         toast.error("Veuillez remplir tous les champs requis", {
           description: "Certains champs sont manquants ou invalides.",
@@ -559,12 +656,7 @@ function DeposerPageContent() {
   const handlePrev = () => {
     if (step > 1) {
       setStep(step - 1);
-      // Scroll vers le haut de la page après le changement d'étape
-      window.scrollTo({
-        top: 0,
-        left: 0,
-        behavior: "instant",
-      });
+      window.scrollTo({ top: 0, left: 0, behavior: "instant" });
     }
   };
 
@@ -575,7 +667,6 @@ function DeposerPageContent() {
 
   return (
     <div className="max-w-lg mx-auto px-5 pt-6 pb-32 text-white">
-      {/* Spacer pour le header fixed */}
       <div className="h-16 md:hidden" />
       
       <div className="flex items-center gap-4 mb-6">
@@ -606,12 +697,9 @@ function DeposerPageContent() {
       </div>
 
       <form
-        className="rounded-[32px] border border-white/10 bg-white/5 p-5 sm:p-6"
+        className="rounded-[32px] border border-white/10 bg-white/5 p-5 sm:p-6 mt-6"
         onSubmit={(e) => {
           e.preventDefault();
-          if (step === 3) {
-            handleSubmitClick();
-          }
         }}
       >
         <AnimatePresence mode="wait">
@@ -966,7 +1054,7 @@ function DeposerPageContent() {
             </motion.div>
           )}
 
-          {/* Step 3: Paiement */}
+          {/* Step 3: Paiement & Confirmation */}
           {step === 3 && (
             <motion.div
               key="step3"
@@ -975,7 +1063,7 @@ function DeposerPageContent() {
               exit={{ opacity: 0, x: -20 }}
               className="space-y-6"
             >
-              <h2 className="text-xl font-semibold">3. Paiement</h2>
+              <h2 className="text-xl font-semibold">3. Finalisation</h2>
 
               {/* Champ téléphone de contact */}
               <div>
@@ -1003,19 +1091,66 @@ function DeposerPageContent() {
                 )}
               </div>
 
+              {/* LOGIQUE PAIEMENT - FLUX STRICT */}
               {needsPayment ? (
                 <>
-                  {paymentToken && paymentVerification === "success" ? (
-                    <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-6 text-center">
-                      <Check className="mx-auto h-12 w-12 text-emerald-400" />
-                      <p className="mt-4 text-lg font-semibold text-white">
-                        Paiement confirmé par PayDunya !
-                      </p>
-                      <p className="mt-2 text-sm text-white/70">
-                        Vous pouvez maintenant finaliser votre annonce.
-                      </p>
+                  {/* On affiche le succès SI le paiement est validé OU si on est en train de soumettre après un succès */}
+                  {(paymentToken && paymentVerification === "success") || (submitting && paymentToken) ? (
+                    // CAS 1 : PAIEMENT RÉUSSI -> CARTE VERTE + BOUTON CONFIRMER
+                    <div className="space-y-6">
+                      <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-6 text-center animate-in fade-in zoom-in duration-500">
+                        <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-emerald-500/20">
+                          <Check className="h-8 w-8 text-emerald-400" />
+                        </div>
+                        <h3 className="text-xl font-bold text-white">
+                          Paiement validé ✅
+                        </h3>
+                        <p className="mt-2 text-white/70">
+                          Nous avons bien reçu votre paiement de 1 500 FCFA.
+                        </p>
+                      </div>
+
+                      {/* LE BOUTON FINAL - ACTION MANUELLE OBLIGATOIRE */}
+                      <Button
+                        type="button"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          handleSubmitClick(e);
+                        }}
+                        disabled={submitting}
+                        className="w-full h-14 text-lg font-semibold rounded-xl bg-emerald-500 text-white hover:bg-emerald-600 shadow-lg shadow-emerald-500/20 transition-all hover:scale-[1.02] active:scale-[0.98]"
+                      >
+                        {submitting ? (
+                          <>
+                            <svg
+                              className="mr-2 h-5 w-5 animate-spin"
+                              xmlns="http://www.w3.org/2000/svg"
+                              fill="none"
+                              viewBox="0 0 24 24"
+                            >
+                              <circle
+                                className="opacity-25"
+                                cx="12"
+                                cy="12"
+                                r="10"
+                                stroke="currentColor"
+                                strokeWidth="4"
+                              ></circle>
+                              <path
+                                className="opacity-75"
+                                fill="currentColor"
+                                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                              ></path>
+                            </svg>
+                            Finalisation en cours...
+                          </>
+                        ) : (
+                          "Confirmer le dépôt de l'annonce"
+                        )}
+                      </Button>
                     </div>
                   ) : (
+                    // CAS 2 : PAS ENCORE PAYÉ -> BOUTON PAYER
                     <div className="rounded-2xl border border-white/10 bg-white/5 p-6 text-center">
                       <p className="text-sm text-white/70 mb-4">
                         Paiement sécurisé via PayDunya
@@ -1042,29 +1177,29 @@ function DeposerPageContent() {
                               body: JSON.stringify({
                                 amount: 1500,
                                 description: `Diffusion Simple - ${values.title}`,
-                                propertyId: null, // Sera mis à jour après création
+                                propertyId: null,
                                 returnUrl: `${window.location.origin}/compte/deposer?payment=success`,
                                 cancelUrl: `${window.location.origin}/compte/deposer?payment=canceled`,
                               }),
                             });
 
-                          const data = await response.json();
+                            const data = await response.json();
 
-                          if (!response.ok || !data.success) {
-                            throw new Error(data.error || "Erreur lors de la création du paiement");
-                          }
+                            if (!response.ok || !data.success) {
+                              throw new Error(data.error || "Erreur lors de la création du paiement");
+                            }
 
-                          // Stocker le token avant la redirection
-                          if (data.token) {
-                            localStorage.removeItem("paydunya_payment_verified");
-                            localStorage.setItem("paydunya_payment_token", data.token);
-                            setPaymentToken(null);
-                            setPaymentVerification("idle");
-                            setPaymentMessage(null);
-                          }
+                            // Stocker le token avant la redirection
+                            if (data.token) {
+                              localStorage.removeItem("paydunya_payment_verified");
+                              localStorage.setItem("paydunya_payment_token", data.token);
+                              setPaymentToken(null);
+                              setPaymentVerification("idle");
+                              setPaymentMessage(null);
+                            }
 
-                          // Rediriger vers PayDunya
-                          window.location.href = data.checkout_url;
+                            // Rediriger vers PayDunya
+                            window.location.href = data.checkout_url;
                           } catch (error) {
                             console.error("Erreur PayDunya:", error);
                             toast.error("Erreur lors de la création du paiement", {
@@ -1078,32 +1213,22 @@ function DeposerPageContent() {
                       >
                         {submitting ? "Redirection..." : "Payer avec PayDunya"}
                       </Button>
+                      
+                      {paymentVerification === "checking" && (
+                        <div className="mt-4 rounded-2xl border border-white/10 bg-white/5 p-4 text-center text-sm text-white/70">
+                          Vérification du paiement en cours...
+                        </div>
+                      )}
+                      {paymentMessage && paymentVerification === "error" && (
+                        <div className="mt-4 rounded-2xl border border-amber-500/40 bg-amber-500/10 p-4 text-center text-sm text-amber-200">
+                          {paymentMessage}
+                        </div>
+                      )}
                     </div>
-                  )}
-                  {paymentVerification === "checking" && (
-                    <div className="rounded-2xl border border-white/10 bg-white/5 p-4 text-center text-sm text-white/70">
-                      Vérification du paiement en cours...
-                    </div>
-                  )}
-                  {paymentMessage && (
-                    <div
-                      className={`rounded-2xl border p-4 text-center text-sm ${
-                        paymentVerification === "error"
-                          ? "border-amber-500/40 bg-amber-500/10 text-amber-200"
-                          : "border-white/10 bg-white/5 text-white/70"
-                      }`}
-                    >
-                      {paymentMessage}
-                    </div>
-                  )}
-                  {!paymentToken && paymentVerification === "idle" && !paymentMessage && (
-                    <p className="text-xs text-white/50 text-center">
-                      Vous serez redirigé vers PayDunya pour effectuer le paiement.
-                      Après confirmation, vous pourrez finaliser votre annonce.
-                    </p>
                   )}
                 </>
               ) : (
+                // CAS GRATUIT (Mandat)
                 <div className="rounded-2xl border border-amber-500/20 bg-amber-500/10 p-6 text-center">
                   <Check className="mx-auto h-12 w-12 text-amber-400" />
                   <p className="mt-4 text-lg font-semibold text-white">
@@ -1112,13 +1237,26 @@ function DeposerPageContent() {
                   <p className="mt-2 text-sm text-white/70">
                     Votre annonce sera vérifiée par notre équipe avant publication
                   </p>
+                  
+                  {/* Bouton pour les annonces gratuites */}
+                  <Button
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      handleSubmitClick(e);
+                    }}
+                    disabled={submitting}
+                    className="mt-6 w-full h-12 rounded-xl bg-white text-black hover:bg-gray-100 disabled:opacity-50"
+                  >
+                    {submitting ? "Envoi..." : "Confirmer le dépôt"}
+                  </Button>
                 </div>
               )}
             </motion.div>
           )}
         </AnimatePresence>
 
-        {/* Navigation Buttons */}
+        {/* Navigation Buttons - CACHÉ À L'ÉTAPE 3 SI PAIEMENT REQUIS */}
         <div className="mt-8 flex justify-between gap-4">
           {step > 1 ? (
             <Button
@@ -1145,13 +1283,14 @@ function DeposerPageContent() {
               Suivant
               <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
-          ) : (
+          ) : !needsPayment ? (
+            // Bouton visible uniquement pour les annonces GRATUITES à l'étape 3
+            // (Pour les payantes, le bouton est dans le bloc de paiement)
             <Button
               type="button"
               size="lg"
               onClick={(e) => {
                 e.preventDefault();
-                e.stopPropagation();
                 handleSubmitClick(e);
               }}
               disabled={submitting || uploading}
@@ -1185,7 +1324,7 @@ function DeposerPageContent() {
                 "Confirmer le dépôt"
               )}
             </Button>
-          )}
+          ) : null}
         </div>
       </form>
     </div>
@@ -1199,4 +1338,3 @@ export default function DeposerPage() {
     </Suspense>
   );
 }
-

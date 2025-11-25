@@ -97,13 +97,22 @@ export async function signup(formData: FormData) {
     });
 
     if (error) {
-      console.error("❌ Signup error détaillé:", {
+      // 🚨 LOG COMPLET DE L'ERREUR SUPABASE POUR DEBUGGING
+      console.error("🚨 ERREUR SUPABASE SIGNUP :", error);
+      console.error("🚨 ERREUR SUPABASE SIGNUP (détails):", {
         message: error.message,
         code: error.code,
         status: error.status,
         name: error.name,
-        fullError: JSON.stringify(error, null, 2),
+        cause: error.cause,
+        stack: error.stack,
       });
+      // Log JSON complet
+      try {
+        console.error("🚨 ERREUR SUPABASE SIGNUP (JSON):", JSON.stringify(error, null, 2));
+      } catch (e) {
+        console.error("🚨 Impossible de sérialiser l'erreur en JSON");
+      }
       
       let errorMessage = error.message;
       
@@ -129,6 +138,11 @@ export async function signup(formData: FormData) {
         errorMessage = "Trop d'emails envoyés. Veuillez attendre quelques minutes avant de réessayer.";
       } else if (error.message.includes("Failed to send")) {
         errorMessage = "Erreur d'envoi d'email. Veuillez vérifier votre adresse email ou réessayer plus tard.";
+      } else if (error.message.includes("Error sending confirmation email")) {
+        // C'est souvent une erreur SMTP
+        errorMessage = "Erreur technique lors de l'envoi de l'email. Contactez le support ou réessayez.";
+        // Log spécifique pour aider le développeur
+        console.error("⚠️ ERREUR SMTP PROBABLE : Vérifiez la configuration SMTP dans le Dashboard Supabase (Authentication > SMTP Settings). Assurez-vous que le mot de passe d'application est correct.");
       } else {
         // En développement, afficher le message d'erreur complet pour le debugging
         if (process.env.NODE_ENV === "development") {
@@ -157,6 +171,9 @@ export async function signup(formData: FormData) {
     const isAutoConfirmed = !!data.session;
     const emailConfirmationRequired = !isAutoConfirmed && !data.user.email_confirmed_at;
 
+    // Supabase envoie automatiquement l'email via SMTP configuré dans le dashboard
+    // Pas besoin de logique personnalisée
+
     revalidatePath("/", "layout");
     
     // Si l'utilisateur est automatiquement confirmé, on peut le rediriger directement
@@ -180,7 +197,16 @@ export async function signup(formData: FormData) {
       autoConfirmed: false,
     };
   } catch (err) {
-    console.error("Unexpected signup error:", err);
+    // 🚨 LOG COMPLET DE L'ERREUR INATTENDUE
+    console.error("🚨 ERREUR INATTENDUE SIGNUP :", err);
+    if (err instanceof Error) {
+      console.error("🚨 ERREUR INATTENDUE (détails):", {
+        message: err.message,
+        name: err.name,
+        stack: err.stack,
+        cause: err.cause,
+      });
+    }
     return {
       error: "Une erreur inattendue s'est produite. Veuillez réessayer.",
     };
@@ -189,32 +215,41 @@ export async function signup(formData: FormData) {
 
 /**
  * Renvoyer l'email de confirmation
+ * Utilise la méthode native de Supabase Auth avec SMTP configuré
  */
 export async function resendConfirmationEmail(email: string) {
-  const supabase = await createClient();
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-  const emailRedirectTo = `${appUrl}/auth/callback?next=/`;
+  try {
+    const supabase = await createClient();
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+    const emailRedirectTo = `${appUrl}/auth/callback?next=/`;
 
-  const { error } = await supabase.auth.resend({
-    type: "signup",
-    email: email.trim().toLowerCase(),
-    options: {
-      emailRedirectTo,
-    },
-  });
+    const { error } = await supabase.auth.resend({
+      type: "signup",
+      email: email.trim().toLowerCase(),
+      options: {
+        emailRedirectTo,
+      },
+    });
 
-  if (error) {
-    console.error("Resend confirmation email error:", error);
+    if (error) {
+      console.error("Erreur lors du renvoi de l'email de confirmation:", error);
+      return {
+        success: false,
+        error: error.message || "Erreur lors de l'envoi de l'email de confirmation",
+      };
+    }
+
+    return {
+      success: true,
+      message: "Email de confirmation renvoyé ! Vérifiez votre boîte de réception.",
+    };
+  } catch (error) {
+    console.error("Erreur inattendue lors du renvoi de l'email:", error);
     return {
       success: false,
-      error: error.message || "Erreur lors de l'envoi de l'email de confirmation",
+      error: error instanceof Error ? error.message : "Erreur inattendue",
     };
   }
-
-  return {
-    success: true,
-    message: "Email de confirmation renvoyé ! Vérifiez votre boîte de réception.",
-  };
 }
 
 export async function login(formData: FormData) {

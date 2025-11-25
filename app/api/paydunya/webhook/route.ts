@@ -43,11 +43,12 @@ export async function POST(request: Request) {
       const propertyId = customData?.property_id;
 
       if (propertyId) {
-        // Mettre à jour le statut de validation de la propriété si elle existe déjà
+        // Mettre à jour uniquement les informations de paiement, SANS changer le statut de validation
+        // Le statut reste "payment_pending" pour que l'admin puisse valider manuellement
         const { error: updateError } = await supabase
           .from("properties")
           .update({
-            validation_status: "approved",
+            // NE PAS changer validation_status - il doit rester "payment_pending" pour validation admin
             payment_ref: payload.invoice.token,
             payment_date: new Date().toISOString(),
           })
@@ -56,7 +57,7 @@ export async function POST(request: Request) {
         if (updateError) {
           console.error("Erreur lors de la mise à jour de la propriété:", updateError);
         } else {
-          console.log("Propriété mise à jour avec succès:", propertyId);
+          console.log("✅ Paiement confirmé pour la propriété:", propertyId, "- Statut reste 'payment_pending' pour validation admin");
         }
       } else {
         // Si la propriété n'existe pas encore, le token sera utilisé lors de la création

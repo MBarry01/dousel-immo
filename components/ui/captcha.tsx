@@ -5,81 +5,40 @@ import Turnstile from "react-turnstile";
 
 interface CaptchaProps {
   onVerify: (token: string) => void;
-  onError?: () => void;
   onExpire?: () => void;
-  theme?: "light" | "dark" | "auto";
-  size?: "normal" | "compact";
-  className?: string;
 }
 
-export function Captcha({
-  onVerify,
-  onError,
-  onExpire,
-  theme = "auto",
-  size = "normal",
-  className = "",
-}: CaptchaProps) {
-  const [siteKey, setSiteKey] = useState<string | null>(null);
-  const [isReady, setIsReady] = useState(false);
-  const [resetKey, setResetKey] = useState(0); // Key to force remount
-  const [configError, setConfigError] = useState(false);
+export function Captcha({ onVerify, onExpire }: CaptchaProps) {
+  const [mounted, setMounted] = useState(false);
+  const siteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
 
   useEffect(() => {
-    const key = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
-    if (key) {
-      setSiteKey(key);
-      setIsReady(true);
-      setConfigError(false);
-    } else {
-      console.error("❌ NEXT_PUBLIC_TURNSTILE_SITE_KEY n'est pas définie dans les variables d'environnement");
-      setConfigError(true);
-      setIsReady(true); // Set ready to show error message
-    }
+    setMounted(true);
   }, []);
 
-  const handleExpire = () => {
-    console.warn("Turnstile token expired. Resetting widget.");
-    setResetKey((prev) => prev + 1); // Increment key to force remount
-    onExpire?.();
-  };
-
-  if (!isReady) {
-    return null;
-  }
-
-  if (configError || !siteKey) {
-    return (
-      <div className={`flex justify-center ${className}`}>
-        <div className="rounded-xl border border-red-500/20 bg-red-500/10 p-4 text-center">
-          <p className="text-sm font-semibold text-red-400">
-            ⚠️ Configuration manquante
-          </p>
-          <p className="mt-1 text-xs text-red-300/70">
-            La clé Cloudflare Turnstile n'est pas configurée.
-          </p>
-          <p className="mt-2 text-xs text-red-300/50">
-            Ajoutez <code className="rounded bg-red-500/20 px-1 py-0.5">NEXT_PUBLIC_TURNSTILE_SITE_KEY</code> dans vos variables d'environnement.
-          </p>
-        </div>
-      </div>
-    );
-  }
+  if (!mounted || !siteKey) return null;
 
   return (
-    <div className={`flex justify-center ${className}`}>
+    <div className="my-4 flex flex-col items-center gap-2">
       <Turnstile
-        key={resetKey} // Use key to force remount
         sitekey={siteKey}
-        onSuccess={onVerify}
-        onError={() => {
-          console.error("Turnstile verification error");
-          onError?.();
-        }}
-        onExpire={handleExpire} // Use custom handler
-        theme={theme}
-        size={size}
+        onVerify={onVerify}
+        onExpire={onExpire}
+        theme="auto"
       />
+      {process.env.NODE_ENV === "development" && (
+        <button
+          type="button"
+          id="bypass-captcha-btn"
+          onClick={() => {
+            console.log("🔘 Bypass button clicked");
+            onVerify("dev-token");
+          }}
+          className="text-xs text-amber-400 hover:text-amber-300 underline p-2 border border-amber-400/30 rounded"
+        >
+          [DEV] Bypass Captcha
+        </button>
+      )}
     </div>
   );
 }

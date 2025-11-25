@@ -8,6 +8,7 @@ import { ListingApprovedEmail } from "@/emails/listing-approved-email";
 import { ListingRejectedEmail } from "@/emails/listing-rejected-email";
 import { notifyUser } from "@/lib/notifications";
 import { requireAnyRole } from "@/lib/permissions";
+import { generateInvoicePdf } from "@/lib/invoice";
 
 export async function moderateProperty(
   propertyId: string,
@@ -21,7 +22,7 @@ export async function moderateProperty(
   // Récupérer les infos du bien avant modification
   const { data: property } = await supabase
     .from("properties")
-    .select("title, owner_id")
+    .select("title, owner_id, service_type, price, payment_ref")
     .eq("id", propertyId)
     .single();
 
@@ -48,6 +49,39 @@ export async function moderateProperty(
         const propertyUrl = `${baseUrl}/biens/${propertyId}`;
 
         if (status === "approved") {
+          // GESTION DE LA FACTURE POUR LES ANNONCES PAYANTES
+          let invoiceBuffer: Buffer | null = null;
+          let invoiceNumber: string | undefined = undefined;
+          const isPaid = property.service_type === "boost_visibilite";
+
+          if (isPaid) {
+            try {
+              console.log("💰 Génération de la facture pour l'annonce payante:", property.title);
+              
+              invoiceNumber = `FAC-${new Date().getFullYear()}-${(property.payment_ref || "REF").slice(-6).toUpperCase()}`;
+              
+              const invoiceData = {
+                invoiceNumber,
+                date: new Date(),
+                clientName: owner.user.user_metadata?.full_name || owner.user.email || "Client Doussel Immo",
+                clientEmail: owner.user.email,
+                items: [
+                  {
+                    description: `Boost Visibilité - Annonce : ${property.title}`,
+                    amount: 5000, // Montant fixe pour le boost
+                  },
+                ],
+                total: 5000,
+              };
+
+              invoiceBuffer = await generateInvoicePdf(invoiceData);
+              console.log("✅ Facture PDF générée avec succès");
+            } catch (invoiceError) {
+              console.error("❌ Erreur lors de la génération de la facture:", invoiceError);
+              // On continue quand même l'envoi de l'email sans la facture
+            }
+          }
+
           // Notifier l'utilisateur
           await notifyUser({
             userId: property.owner_id,
@@ -57,16 +91,42 @@ export async function moderateProperty(
             resourcePath: `/biens/${propertyId}`,
           });
 
-          // Envoyer email d'approbation
-          await sendEmail({
+          // Envoyer email d'approbation avec facture en pièce jointe si payant
+          const emailResult = await sendEmail({
             to: owner.user.email,
             subject: `🎉 Votre annonce "${property.title}" est en ligne !`,
             user_id: property.owner_id,
             react: ListingApprovedEmail({
               propertyTitle: property.title,
               propertyUrl,
+              isPaid,
+              invoiceNumber,
             }),
+            attachments: invoiceBuffer
+              ? [
+                  {
+                    filename: `Facture-${invoiceNumber || "Doussel"}.pdf`,
+                    content: invoiceBuffer,
+                    contentType: "application/pdf",
+                  },
+                ]
+              : undefined,
           });
+
+          if (isPaid && invoiceBuffer) {
+            if (emailResult.error) {
+              console.error("❌ Erreur lors de l'envoi de l'email avec facture:", emailResult.error);
+            } else {
+              console.log("✅ Email d'approbation avec facture PDF envoyé à", owner.user.email);
+              console.log("📎 Pièce jointe:", `Facture-${invoiceNumber || "Doussel"}.pdf`, `(${invoiceBuffer.length} bytes)`);
+            }
+          } else {
+            if (emailResult.error) {
+              console.error("❌ Erreur lors de l'envoi de l'email:", emailResult.error);
+            } else {
+              console.log("✅ Email d'approbation envoyé à", owner.user.email);
+            }
+          }
         }
         // Pour le refus, on utilise moderatePropertyWithReason qui gère le motif
       }
@@ -158,4 +218,6 @@ export async function moderatePropertyWithReason(
 
   return { success: true };
 }
+
+
 

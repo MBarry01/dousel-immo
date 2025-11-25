@@ -64,7 +64,9 @@ export async function submitUserListing(data: SubmitListingData) {
     if (data.service_type === "boost_visibilite") {
       if (data.payment_ref) {
         validationStatus = "payment_pending";
+        console.log("✅ Paiement trouvé, statut défini à payment_pending");
       } else {
+        console.error("❌ Pas de référence de paiement pour boost_visibilite");
         return { error: "La référence de paiement est requise pour cette offre" };
       }
     }
@@ -231,4 +233,5 @@ export async function submitUserListing(data: SubmitListingData) {
     return { error: `Erreur lors du dépôt de l'annonce : ${errorMessage}` };
   }
 }
+
 

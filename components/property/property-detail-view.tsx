@@ -283,34 +283,59 @@ export const PropertyDetailView = ({
 
           {/* Infos Agent (Hôte) */}
           <div className="mb-8 flex items-center gap-4 border-b border-gray-200 pb-6 dark:border-white/10">
-            <div className="relative h-16 w-16 overflow-hidden rounded-full">
-              {property.agent.photo ? (
-                <Image
-                  src={property.agent.photo}
-                  alt={property.agent.name}
-                  fill
-                  className="object-cover"
-                  sizes="64px"
-                />
-              ) : (
-                <div className="flex h-full w-full items-center justify-center bg-gray-200 text-xl font-bold text-gray-600 dark:bg-white/20 dark:text-white/80">
-                  {property.agent.name.charAt(0).toUpperCase()}
-                </div>
-              )}
-            </div>
-            <div className="flex-1">
-              <p className="text-sm text-gray-600 dark:text-white/60">
-                Proposé par
-              </p>
-              <p className="font-semibold text-gray-900 dark:text-white">
-                {property.agent.name}
-              </p>
-              {property.agent.phone && (
-                <p className="text-sm text-gray-500 dark:text-white/50">
-                  {property.agent.phone}
-                </p>
-              )}
-            </div>
+            {(() => {
+              // Logique d'affichage :
+              // - Mandat payant (mandat_confort, boost_visibilite) -> Afficher le propriétaire (contact_phone ou owner.phone)
+              // - Mandat gratuit (ou non spécifié) -> Afficher l'agence (Agent 2)
+
+              const isPaidService = property.service_type === "mandat_confort" || property.service_type === "boost_visibilite";
+
+              // Données de l'agence (Agent 2 par défaut)
+              const agencyName = "Agence Dousell"; // Ou "Amadou Barry" selon préférence
+              const agencyPhoto = "/agent2.png";
+              const agencyPhone = "+221781385281";
+
+              // Si payant, on cherche d'abord le contact_phone spécifique à l'annonce, sinon le téléphone du profil
+              const ownerPhone = property.contact_phone || property.owner?.phone;
+              const showOwner = isPaidService && ownerPhone;
+
+              const displayName = showOwner ? property.owner!.full_name : agencyName;
+              const displayPhoto = showOwner ? property.owner!.avatar_url : agencyPhoto;
+              const displayPhone = showOwner ? ownerPhone : agencyPhone;
+
+              return (
+                <>
+                  <div className="relative h-16 w-16 overflow-hidden rounded-full">
+                    {displayPhoto ? (
+                      <Image
+                        src={displayPhoto}
+                        alt={displayName || "Agent"}
+                        fill
+                        className="object-cover"
+                        sizes="64px"
+                      />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center bg-gray-200 text-xl font-bold text-gray-600 dark:bg-white/20 dark:text-white/80">
+                        {(displayName || "A").charAt(0).toUpperCase()}
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-sm text-gray-600 dark:text-white/60">
+                      Proposé par
+                    </p>
+                    <p className="font-semibold text-gray-900 dark:text-white">
+                      {displayName}
+                    </p>
+                    {displayPhone && (
+                      <p className="text-sm text-gray-500 dark:text-white/50">
+                        {displayPhone}
+                      </p>
+                    )}
+                  </div>
+                </>
+              );
+            })()}
           </div>
 
           {/* Highlights (Dakar Specs) */}
@@ -409,13 +434,12 @@ export const PropertyDetailView = ({
                     Performance énergétique
                   </dt>
                   <dd className="mt-1">
-                    <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${
-                      property.specs.dpe === "A" ? "bg-green-500/20 text-green-500" :
+                    <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${property.specs.dpe === "A" ? "bg-green-500/20 text-green-500" :
                       property.specs.dpe === "B" ? "bg-blue-500/20 text-blue-500" :
-                      property.specs.dpe === "C" ? "bg-yellow-500/20 text-yellow-500" :
-                      property.specs.dpe === "D" ? "bg-orange-500/20 text-orange-500" :
-                      "bg-red-500/20 text-red-500"
-                    }`}>
+                        property.specs.dpe === "C" ? "bg-yellow-500/20 text-yellow-500" :
+                          property.specs.dpe === "D" ? "bg-orange-500/20 text-orange-500" :
+                            "bg-red-500/20 text-red-500"
+                      }`}>
                       DPE {property.specs.dpe}
                     </span>
                   </dd>

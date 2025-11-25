@@ -55,13 +55,13 @@ export async function generateMetadata({
 
   // Formater le titre selon le format demandé : "[Type] à [Quartier] - [Prix] | Dousell Immo"
   const propertyType = property.details.type || "Bien";
-  const district = (property.location as { district?: string }).district || 
-                   property.location.landmark || 
-                   property.location.city;
+  const district = (property.location as { district?: string }).district ||
+    property.location.landmark ||
+    property.location.city;
   const formattedPrice = new Intl.NumberFormat("fr-FR", {
     maximumFractionDigits: 0,
   }).format(property.price);
-  
+
   const title = `${propertyType} à ${district} - ${formattedPrice} FCFA | Dousell Immo`;
 
   // Description optimisée pour le SEO
@@ -95,13 +95,13 @@ export default async function PropertyPage({ params }: PropertyPageProps) {
   const resolvedParams = await params;
   const property = await getPropertyById(resolvedParams.id);
   if (!property) notFound();
-  
+
   // Récupérer l'utilisateur courant pour afficher ses réactions
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  
+
   // Récupérer les avis en parallèle avec les propriétés similaires
   const [similar, reviews, reviewStats] = await Promise.all([
     getSimilarProperties(
@@ -113,7 +113,7 @@ export default async function PropertyPage({ params }: PropertyPageProps) {
     getPropertyReviews(property.id, user?.id),
     getPropertyReviewStats(property.id),
   ]);
-  
+
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://dousell-immo.app";
   const shareUrl = `${baseUrl}/biens/${property.id}`;
 

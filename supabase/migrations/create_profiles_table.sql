@@ -116,3 +116,6 @@ COMMENT ON COLUMN public.profiles.role IS 'Rôle: particulier, agent, ou admin';
 COMMENT ON COLUMN public.profiles.phone IS 'Numéro de téléphone';
 COMMENT ON COLUMN public.profiles.is_verified IS 'Indique si le profil est vérifié';
 
+
+
+

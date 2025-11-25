@@ -22,9 +22,18 @@ type BookingCardProps = {
 };
 
 export const BookingCard = ({ property }: BookingCardProps) => {
-  // Priorité : agent.whatsapp > agent.phone > owner.phone > AGENCY_PHONE
-  const whatsappNumber = property.agent.whatsapp || property.agent.phone || property.owner?.phone || AGENCY_PHONE;
-  const whatsappUrl = `https://wa.me/${whatsappNumber.replace(/[^0-9]/g, "")}?text=${encodeURIComponent(
+  // Logique de contact :
+  // - Mandat payant (mandat_confort, boost_visibilite) -> Propriétaire (contact_phone ou owner.phone)
+  // - Mandat gratuit -> Agence (Agent 2)
+  const isPaidService = property.service_type === "mandat_confort" || property.service_type === "boost_visibilite";
+  const agencyPhone = "+221781385281"; // Agent 2
+
+  // Si payant, on cherche d'abord le contact_phone spécifique à l'annonce, sinon le téléphone du profil
+  const ownerPhone = property.contact_phone || property.owner?.phone;
+
+  const targetPhone = (isPaidService && ownerPhone) ? ownerPhone : agencyPhone;
+
+  const whatsappUrl = `https://wa.me/${targetPhone.replace(/[^0-9]/g, "")}?text=${encodeURIComponent(
     `Bonjour, je suis intéressé par le bien ${property.title} (${property.id}) à ${property.location.city}.`
   )}`;
 

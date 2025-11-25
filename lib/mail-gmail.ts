@@ -2,13 +2,14 @@ import nodemailer from "nodemailer";
 import { render } from "@react-email/render";
 import React from "react";
 
-const GMAIL_USER = process.env.GMAIL_USER;
-const GMAIL_APP_PASSWORD = process.env.GMAIL_APP_PASSWORD;
-
 /**
  * Configuration du transporteur SMTP Gmail
+ * Lit les variables d'environnement à l'exécution (pas à l'import)
  */
 const createTransporter = () => {
+  const GMAIL_USER = process.env.GMAIL_USER;
+  const GMAIL_APP_PASSWORD = process.env.GMAIL_APP_PASSWORD;
+
   if (!GMAIL_USER || !GMAIL_APP_PASSWORD) {
     throw new Error(
       "GMAIL_USER et GMAIL_APP_PASSWORD doivent être définis dans les variables d'environnement"
@@ -51,6 +52,9 @@ export async function sendEmail({
   attachments,
 }: SendEmailOptions) {
   try {
+    const GMAIL_USER = process.env.GMAIL_USER;
+    const GMAIL_APP_PASSWORD = process.env.GMAIL_APP_PASSWORD;
+
     if (!GMAIL_USER || !GMAIL_APP_PASSWORD) {
       console.error("❌ Configuration Gmail manquante");
       return {
@@ -75,17 +79,42 @@ export async function sendEmail({
     // Normaliser 'to' en tableau
     const recipients = Array.isArray(to) ? to : [to];
 
+    // Préparer les attachments avec le bon format pour nodemailer
+    const formattedAttachments = attachments?.map((att) => {
+      // Nodemailer accepte directement les Buffers
+      // Format attendu: { filename, content (Buffer), contentType }
+      const attachment: any = {
+        filename: att.filename,
+        content: att.content,
+      };
+      
+      // Ajouter contentType si spécifié
+      if (att.contentType) {
+        attachment.contentType = att.contentType;
+      }
+      
+      // Pour les PDFs, s'assurer que le content est bien un Buffer
+      if (att.contentType === "application/pdf" && Buffer.isBuffer(att.content)) {
+        console.log(`📎 Préparation pièce jointe PDF: ${att.filename} (${att.content.length} bytes)`);
+      }
+      
+      return attachment;
+    }) || [];
+
     // Configuration de l'email avec le nom d'expéditeur professionnel
     const mailOptions = {
       from: `"Doussel Immo Support" <${GMAIL_USER}>`,
       to: recipients.join(", "),
       subject,
       html: emailHtml,
-      attachments: attachments || [],
+      attachments: formattedAttachments,
     };
 
     console.log(`📧 Envoi d'email à: ${recipients.join(", ")}`);
     console.log(`📧 Sujet: ${subject}`);
+    if (formattedAttachments.length > 0) {
+      console.log(`📎 Pièces jointes: ${formattedAttachments.map(a => `${a.filename} (${Buffer.isBuffer(a.content) ? a.content.length + ' bytes' : 'string'})`).join(", ")}`);
+    }
 
     const info = await transporter.sendMail(mailOptions);
 
@@ -265,6 +294,5 @@ export async function sendInvoiceEmail({
  * Email de l'admin (pour les notifications)
  */
 export function getAdminEmail() {
-  return process.env.ADMIN_EMAIL || GMAIL_USER || "barrymohamadou98@gmail.com";
+  return process.env.ADMIN_EMAIL || process.env.GMAIL_USER || "barrymohamadou98@gmail.com";
 }
-

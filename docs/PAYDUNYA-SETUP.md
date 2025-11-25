@@ -52,7 +52,7 @@ Dans votre dashboard PayDunya, configurez l'URL de callback :
 3. Utilisez cette URL dans PayDunya ET dans `PAYDUNYA_CALLBACK_URL`
 
 ```
-https://xxxx.ngrok-free.app/api/webhooks/paydunya
+https://333b7a25dfeb.ngrok-free.app/api/webhooks/paydunya
 ```
 
 Si vous ne pouvez pas utiliser Ngrok, laissez `http://localhost:3000/api/webhooks/paydunya`, mais PayDunya ne pourra pas appeler votre serveur local.

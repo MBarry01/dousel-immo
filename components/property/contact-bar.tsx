@@ -20,16 +20,19 @@ type ContactBarProps = {
 export const ContactBar = ({ property }: ContactBarProps) => {
   const { user } = useAuth();
 
-  // Déterminer le numéro cible selon le type de mandat
-  // Si diffusion_simple (boost_visibilite) ET propriétaire a un téléphone -> utiliser le téléphone du propriétaire
-  // Sinon -> utiliser le téléphone de l'agence
-  const targetPhone =
-    property.service_type === "boost_visibilite" && property.owner?.phone
-      ? property.owner.phone
-      : AGENCY_PHONE;
+  // Logique de contact :
+  // - Mandat payant (mandat_confort, boost_visibilite) -> Propriétaire (contact_phone ou owner.phone)
+  // - Mandat gratuit -> Agence (Agent 2)
+  const isPaidService = property.service_type === "mandat_confort" || property.service_type === "boost_visibilite";
+  const agencyPhone = "+221781385281"; // Agent 2
 
-  // Pour WhatsApp : priorité agent.whatsapp > targetPhone
-  const whatsappNumber = property.agent.whatsapp || targetPhone;
+  // Si payant, on cherche d'abord le contact_phone spécifique à l'annonce, sinon le téléphone du profil
+  const ownerPhone = property.contact_phone || property.owner?.phone;
+
+  const targetPhone = (isPaidService && ownerPhone) ? ownerPhone : agencyPhone;
+
+  // Pour WhatsApp : utiliser le même numéro cible
+  const whatsappNumber = targetPhone;
   const whatsappUrl = `https://wa.me/${whatsappNumber.replace(/[^0-9]/g, "")}?text=${encodeURIComponent(
     `Bonjour, je suis intéressé par le bien ${property.title} (${property.id}) à ${property.location.city}.`
   )}`;
