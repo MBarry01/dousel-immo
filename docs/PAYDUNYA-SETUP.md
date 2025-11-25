@@ -35,16 +35,27 @@ PAYDUNYA_MASTER_KEY=votre_master_key_ici
 PAYDUNYA_PRIVATE_KEY=votre_private_key_ici
 PAYDUNYA_TOKEN=votre_token_ici
 PAYDUNYA_MODE=test  # ou "live" pour la production
+
+# URLs utilisées par l'intégration
+NEXT_PUBLIC_APP_URL=http://localhost:3000
+# Utilisez l'URL Ngrok pour recevoir les webhooks en local
+PAYDUNYA_CALLBACK_URL=https://<votre-sous-domaine-ngrok>.ngrok-free.app/api/webhooks/paydunya
 ```
 
 ### 4. URL de callback (Webhook)
 
 Dans votre dashboard PayDunya, configurez l'URL de callback :
 
-**En développement :**
+**En développement (Ngrok recommandé) :**
+1. Lancez `ngrok http 3000`
+2. Récupérez l'URL générée (ex: `https://xxxx.ngrok-free.app`)
+3. Utilisez cette URL dans PayDunya ET dans `PAYDUNYA_CALLBACK_URL`
+
 ```
-http://localhost:3000/api/paydunya/webhook
+https://xxxx.ngrok-free.app/api/webhooks/paydunya
 ```
+
+Si vous ne pouvez pas utiliser Ngrok, laissez `http://localhost:3000/api/webhooks/paydunya`, mais PayDunya ne pourra pas appeler votre serveur local.
 
 **En production :**
 ```

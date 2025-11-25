@@ -48,6 +48,7 @@ export interface PayDunyaInvoiceResponse {
   response_text: string;
   description: string;
   token: string;
+  response_url?: string;
   response_code_detail?: string;
 }
 
@@ -93,10 +94,22 @@ export function getPayDunyaConfig(): PayDunyaConfig {
 /**
  * URL de base de l'API PayDunya selon le mode
  */
-export function getPayDunyaBaseUrl(mode: PayDunyaMode): string {
-  return mode === "live"
-    ? "https://app.paydunya.com"
-    : "https://app.paydunya.com/sandbox";
+const PAYDUNYA_API_BASE: Record<PayDunyaMode, string> = {
+  test: "https://app.paydunya.com/sandbox-api/v1",
+  live: "https://app.paydunya.com/api/v1",
+};
+
+const PAYDUNYA_CHECKOUT_BASE: Record<PayDunyaMode, string> = {
+  test: "https://app.paydunya.com/sandbox-checkout-invoice",
+  live: "https://app.paydunya.com/checkout-invoice",
+};
+
+export function getPayDunyaApiBaseUrl(mode: PayDunyaMode): string {
+  return PAYDUNYA_API_BASE[mode];
+}
+
+export function getPayDunyaCheckoutBaseUrl(mode: PayDunyaMode): string {
+  return PAYDUNYA_CHECKOUT_BASE[mode];
 }
 
 /**
@@ -106,8 +119,8 @@ export async function createPayDunyaInvoice(
   invoice: PayDunyaInvoice
 ): Promise<PayDunyaInvoiceResponse> {
   const config = getPayDunyaConfig();
-  const baseUrl = getPayDunyaBaseUrl(config.mode);
-  const url = `${baseUrl}/api/v1/checkout-invoice/create`;
+  const baseUrl = getPayDunyaApiBaseUrl(config.mode);
+  const url = `${baseUrl}/checkout-invoice/create`;
 
   const response = await fetch(url, {
     method: "POST",
@@ -128,6 +141,7 @@ export async function createPayDunyaInvoice(
   }
 
   const data = await response.json();
+  console.log("Réponse PayDunya:", data);
 
   if (data.response_code !== "00") {
     throw new Error(
@@ -145,8 +159,8 @@ export async function checkPayDunyaInvoiceStatus(
   token: string
 ): Promise<PayDunyaInvoiceResponse> {
   const config = getPayDunyaConfig();
-  const baseUrl = getPayDunyaBaseUrl(config.mode);
-  const url = `${baseUrl}/api/v1/checkout-invoice/confirm/${token}`;
+  const baseUrl = getPayDunyaApiBaseUrl(config.mode);
+  const url = `${baseUrl}/checkout-invoice/confirm/${token}`;
 
   const response = await fetch(url, {
     method: "GET",
@@ -171,8 +185,84 @@ export async function checkPayDunyaInvoiceStatus(
  * URL de redirection vers le checkout PayDunya
  */
 export function getPayDunyaCheckoutUrl(token: string, mode: PayDunyaMode): string {
-  const baseUrl = getPayDunyaBaseUrl(mode);
-  return `${baseUrl}/checkout-invoice?token=${token}`;
+  const baseUrl = getPayDunyaCheckoutBaseUrl(mode);
+  // En sandbox, l'URL fournie par PayDunya est sandbox-checkout-invoice
+  if (mode === "test") {
+    return `${baseUrl}?token=${token}`;
+  }
+  return `${baseUrl}?token=${token}`;
+}
+
+/**
+ * Initialiser un paiement "Boost annonce"
+ */
+export async function initializePayment(
+  propertyId: string,
+  title: string,
+  price = 5000
+) {
+  const config = getPayDunyaConfig();
+  const baseUrl = getPayDunyaApiBaseUrl(config.mode);
+  const url = `${baseUrl}/checkout-invoice/create`;
+
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+  const callbackUrl =
+    process.env.PAYDUNYA_CALLBACK_URL ||
+    process.env.NGROK_CALLBACK_URL ||
+    `${appUrl}/api/webhooks/paydunya`;
+
+  const payload = {
+    invoice: {
+      total_amount: price,
+      description: `Boost annonce : ${title}`,
+    },
+    store: {
+      name: "Doussel Immo",
+      tagline: "Immobilier Dakar",
+      website_url:
+        process.env.NEXT_PUBLIC_APP_URL || "https://doussel-immo.vercel.app",
+    },
+    custom_data: {
+      property_id: propertyId,
+    },
+    actions: {
+      return_url: `${appUrl}/compte/mes-biens?status=success`,
+      cancel_url: `${appUrl}/compte/mes-biens?status=cancel`,
+      callback_url: callbackUrl,
+    },
+  };
+
+  const response = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "PAYDUNYA-MASTER-KEY": config.masterKey,
+      "PAYDUNYA-PRIVATE-KEY": config.privateKey,
+      "PAYDUNYA-TOKEN": config.token,
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(
+      `Erreur PayDunya (${response.status}): ${errorText}`
+    );
+  }
+
+  const data = await response.json();
+
+  if (data.response_code !== "00") {
+    throw new Error(
+      `Erreur PayDunya: ${data.response_text} - ${data.description}`
+    );
+  }
+
+  return {
+    token: data.token,
+    redirectUrl: getPayDunyaCheckoutUrl(data.token, config.mode),
+    raw: data,
+  };
 }
 
 /**

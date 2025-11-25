@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -130,14 +130,22 @@ const typesBien = [
   { value: "immeuble", label: "Immeuble / Commercial", icon: Store },
 ];
 
-export default function DeposerPage() {
+import { Suspense } from "react";
+
+function DeposerPageContent() {
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const { user, loading } = useAuth();
   const [step, setStep] = useState(1);
   const [imageUrls, setImageUrls] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [paymentToken, setPaymentToken] = useState<string | null>(null);
+  const [paymentVerification, setPaymentVerification] = useState<
+    "idle" | "checking" | "success" | "error"
+  >("idle");
+  const [paymentMessage, setPaymentMessage] = useState<string | null>(null);
 
   const {
     register,
@@ -172,34 +180,97 @@ export default function DeposerPage() {
     });
   }, [step]);
 
-  // Gérer le retour de PayDunya
+  // Restaurer un paiement déjà confirmé (ex: refresh)
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const paymentStatus = params.get("payment");
-    const token = params.get("token");
-
-    if (paymentStatus === "success" && token) {
-      setPaymentToken(token);
-      // Stocker le token dans le localStorage pour persister après navigation
-      localStorage.setItem("paydunya_payment_token", token);
-      toast.success("Paiement effectué avec succès !", {
-        description: "Vous pouvez maintenant finaliser votre annonce.",
-      });
-      // Nettoyer l'URL
-      router.replace("/compte/deposer", { scroll: false });
-    } else if (paymentStatus === "canceled") {
-      toast.error("Paiement annulé", {
-        description: "Vous pouvez réessayer le paiement.",
-      });
-      router.replace("/compte/deposer", { scroll: false });
-    } else {
-      // Vérifier si un token est stocké dans le localStorage
-      const storedToken = localStorage.getItem("paydunya_payment_token");
-      if (storedToken) {
-        setPaymentToken(storedToken);
-      }
+    if (typeof window === "undefined") return;
+    const storedToken = localStorage.getItem("paydunya_payment_token");
+    const verified = localStorage.getItem("paydunya_payment_verified");
+    if (storedToken && verified === "true") {
+      setPaymentToken(storedToken);
+      setPaymentVerification("success");
     }
-  }, [router]);
+  }, []);
+
+  // Gérer le retour de PayDunya via les query params (?payment=...)
+  useEffect(() => {
+    const paymentStatus = searchParams?.get("payment");
+    if (!paymentStatus) return;
+
+    const clearPaymentQuery = () => {
+      const params = new URLSearchParams(searchParams.toString());
+      params.delete("payment");
+      const query = params.toString();
+      router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
+    };
+
+    if (paymentStatus === "success") {
+      if (typeof window === "undefined") {
+        clearPaymentQuery();
+        return;
+      }
+      const token = localStorage.getItem("paydunya_payment_token");
+      if (!token) {
+        setPaymentVerification("error");
+        setPaymentMessage("Impossible de vérifier le paiement. Merci de réessayer.");
+        toast.error("Paiement introuvable", {
+          description: "Veuillez relancer la procédure de paiement.",
+        });
+        clearPaymentQuery();
+        return;
+      }
+
+      setPaymentVerification("checking");
+      setPaymentMessage("Vérification du paiement en cours...");
+
+      const verifyPayment = async () => {
+        try {
+          const res = await fetch(`/api/paydunya/confirm?token=${token}`);
+          const data = await res.json();
+          if (!res.ok || !data?.success) {
+            throw new Error(data?.error || "Vérification impossible");
+          }
+
+          if (data.status === "completed") {
+            localStorage.setItem("paydunya_payment_verified", "true");
+            setPaymentToken(token);
+            setPaymentVerification("success");
+            setPaymentMessage(null);
+            toast.success("Paiement confirmé ✅", {
+              description: "Vous pouvez finaliser votre annonce.",
+            });
+          } else {
+            throw new Error("Paiement non confirmé par PayDunya");
+          }
+        } catch (error) {
+          console.error("Vérification PayDunya échouée:", error);
+          setPaymentVerification("error");
+          setPaymentToken(null);
+          setPaymentMessage("Le paiement n'a pas été confirmé. Merci de réessayer.");
+          localStorage.removeItem("paydunya_payment_token");
+          localStorage.removeItem("paydunya_payment_verified");
+          toast.error("Paiement non confirmé", {
+            description: error instanceof Error ? error.message : undefined,
+          });
+        } finally {
+          clearPaymentQuery();
+        }
+      };
+
+      void verifyPayment();
+    } else if (paymentStatus === "canceled") {
+      if (typeof window !== "undefined") {
+        localStorage.removeItem("paydunya_payment_token");
+        localStorage.removeItem("paydunya_payment_verified");
+      }
+      setPaymentToken(null);
+      setPaymentVerification("idle");
+      setPaymentMessage("Paiement annulé. Vous pouvez réessayer.");
+      toast.error("Paiement annulé", {
+        description: "Vous pouvez relancer le paiement quand vous êtes prêt.",
+      });
+      clearPaymentQuery();
+    }
+  }, [pathname, router, searchParams]);
 
   if (loading) {
     return (
@@ -298,7 +369,11 @@ export default function DeposerPage() {
     }
 
     // Validation : si Diffusion Simple, un token de paiement PayDunya est requis
-    if (needsPayment && !paymentToken && !values.payment_ref?.trim()) {
+    if (
+      needsPayment &&
+      (!paymentToken || paymentVerification !== "success") &&
+      !values.payment_ref?.trim()
+    ) {
       console.error("❌ Paiement non effectué");
       toast.error("Paiement requis", {
         description: "Veuillez effectuer le paiement avant de finaliser votre annonce.",
@@ -351,7 +426,9 @@ export default function DeposerPage() {
         });
         // Nettoyer le token PayDunya du localStorage
         localStorage.removeItem("paydunya_payment_token");
+        localStorage.removeItem("paydunya_payment_verified");
         setPaymentToken(null);
+        setPaymentVerification("idle");
         // Petit délai pour voir le toast avant la redirection
         setTimeout(() => {
           router.push("/compte/mes-biens");
@@ -928,11 +1005,11 @@ export default function DeposerPage() {
 
               {needsPayment ? (
                 <>
-                  {paymentToken ? (
+                  {paymentToken && paymentVerification === "success" ? (
                     <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-6 text-center">
                       <Check className="mx-auto h-12 w-12 text-emerald-400" />
                       <p className="mt-4 text-lg font-semibold text-white">
-                        Paiement effectué avec succès !
+                        Paiement confirmé par PayDunya !
                       </p>
                       <p className="mt-2 text-sm text-white/70">
                         Vous pouvez maintenant finaliser votre annonce.
@@ -979,7 +1056,11 @@ export default function DeposerPage() {
 
                           // Stocker le token avant la redirection
                           if (data.token) {
+                            localStorage.removeItem("paydunya_payment_verified");
                             localStorage.setItem("paydunya_payment_token", data.token);
+                            setPaymentToken(null);
+                            setPaymentVerification("idle");
+                            setPaymentMessage(null);
                           }
 
                           // Rediriger vers PayDunya
@@ -999,10 +1080,26 @@ export default function DeposerPage() {
                       </Button>
                     </div>
                   )}
-                  {!paymentToken && (
+                  {paymentVerification === "checking" && (
+                    <div className="rounded-2xl border border-white/10 bg-white/5 p-4 text-center text-sm text-white/70">
+                      Vérification du paiement en cours...
+                    </div>
+                  )}
+                  {paymentMessage && (
+                    <div
+                      className={`rounded-2xl border p-4 text-center text-sm ${
+                        paymentVerification === "error"
+                          ? "border-amber-500/40 bg-amber-500/10 text-amber-200"
+                          : "border-white/10 bg-white/5 text-white/70"
+                      }`}
+                    >
+                      {paymentMessage}
+                    </div>
+                  )}
+                  {!paymentToken && paymentVerification === "idle" && !paymentMessage && (
                     <p className="text-xs text-white/50 text-center">
-                      Vous serez redirigé vers PayDunya pour effectuer le paiement. 
-                      Après paiement, vous pourrez finaliser votre annonce.
+                      Vous serez redirigé vers PayDunya pour effectuer le paiement.
+                      Après confirmation, vous pourrez finaliser votre annonce.
                     </p>
                   )}
                 </>
@@ -1092,6 +1189,14 @@ export default function DeposerPage() {
         </div>
       </form>
     </div>
+  );
+}
+
+export default function DeposerPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-amber-500"></div></div>}>
+      <DeposerPageContent />
+    </Suspense>
   );
 }
 

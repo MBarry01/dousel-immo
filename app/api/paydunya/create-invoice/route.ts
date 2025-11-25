@@ -30,6 +30,8 @@ export async function POST(request: Request) {
 
     const config = getPayDunyaConfig();
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+    const callbackUrl =
+      process.env.PAYDUNYA_CALLBACK_URL || `${baseUrl}/api/paydunya/webhook`;
     
     // Créer la facture PayDunya
     const invoice = await createPayDunyaInvoice({
@@ -55,7 +57,7 @@ export async function POST(request: Request) {
       actions: {
         cancel_url: cancelUrl || `${baseUrl}/compte/deposer?payment=canceled`,
         return_url: returnUrl || `${baseUrl}/compte/deposer?payment=success`,
-        callback_url: `${baseUrl}/api/paydunya/webhook`,
+        callback_url: callbackUrl,
       },
       custom_data: {
         user_id: user.id,
@@ -65,7 +67,16 @@ export async function POST(request: Request) {
     });
 
     // Retourner l'URL de redirection
-    const checkoutUrl = getPayDunyaCheckoutUrl(invoice.token, config.mode);
+    let checkoutUrl = invoice.response_url;
+
+    // PayDunya renvoie parfois l'URL dans 'response_text'
+    if (!checkoutUrl && invoice.response_text && invoice.response_text.startsWith("http")) {
+      checkoutUrl = invoice.response_text;
+    }
+
+    if (!checkoutUrl) {
+      checkoutUrl = getPayDunyaCheckoutUrl(invoice.token, config.mode);
+    }
 
     return Response.json({
       success: true,
