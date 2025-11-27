@@ -50,7 +50,7 @@ const nextConfig: NextConfig = {
               // En production, cette directive n'est pas nécessaire
               `script-src 'self' 'unsafe-inline'${process.env.NODE_ENV === 'development' ? " 'unsafe-eval'" : ""} https://challenges.cloudflare.com https://*.cloudflare.com https://www.googletagmanager.com https://va.vercel-scripts.com`,
               "style-src 'self' 'unsafe-inline' https://challenges.cloudflare.com",
-              "img-src 'self' data: https: blob:",
+              "img-src 'self' blob: data: https://*.supabase.co https://images.unsplash.com https://images.pexels.com https://lh3.googleusercontent.com https://*.googleusercontent.com",
               "font-src 'self' data:",
               "connect-src 'self' https://*.supabase.co https://*.supabase.in https://challenges.cloudflare.com https://*.google-analytics.com https://va.vercel-scripts.com wss://*.supabase.co",
               "frame-src 'self' https://challenges.cloudflare.com",
